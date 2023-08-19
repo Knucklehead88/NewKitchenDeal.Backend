@@ -1,0 +1,12 @@
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/bin/Debug/net7.0/Core.deps.json
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/bin/Debug/net7.0/Core.dll
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/bin/Debug/net7.0/Core.pdb
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.csproj.AssemblyReference.cache
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.GeneratedMSBuildEditorConfig.editorconfig
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.AssemblyInfoInputs.cache
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.AssemblyInfo.cs
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.csproj.CoreCompileInputs.cache
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.dll
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/refint/Core.dll
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/Core.pdb
+/home/silviu/Projects/NewKitchenDeal/Backend/Core/obj/Debug/net7.0/ref/Core.dll
