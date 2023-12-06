@@ -17,11 +17,14 @@ namespace API.Extensions
             services.AddSingleton<IResponseCacheService, ResponseCacheService>();
             services.AddDbContext<StoreContext>(opt =>
             {
-                opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
+                //opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
+                opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
+
             });
             services.AddSingleton<IConnectionMultiplexer>(c => 
             {
-                var options = ConfigurationOptions.Parse(config.GetConnectionString("Redis"));
+                //var options = ConfigurationOptions.Parse(config.GetConnectionString("Redis")); //localhost
+                var options = ConfigurationOptions.Parse(config.GetConnectionString("localhost"));
                 return ConnectionMultiplexer.Connect(options);
             });
             services.AddScoped<IBasketRepository, BasketRepository>();
@@ -54,7 +57,7 @@ namespace API.Extensions
             {
                 opt.AddPolicy("CorsPolicy", policy => 
                 {
-                    policy.AllowAnyHeader().AllowAnyMethod().WithOrigins("https://localhost:4200");
+                    policy.AllowAnyHeader().AllowAnyMethod().AllowAnyOrigin();
                 });
             });
 
