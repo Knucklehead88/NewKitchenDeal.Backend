@@ -1,9 +1,10 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿
 <Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
   <PropertyGroup Label="Globals">
     <ProjectVersion>2.1</ProjectVersion>
     <DockerTargetOS>Linux</DockerTargetOS>
     <ProjectGuid>b671ca33-673a-4cdf-b802-d2b5a58a9116</ProjectGuid>
+    <UserSecretsId>a0d5d8c5-b0cf-479a-9bdf-964c520044bb</UserSecretsId>
   </PropertyGroup>
   <ItemGroup>
     <None Include="docker-compose.override.yml">

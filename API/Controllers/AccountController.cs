@@ -5,9 +5,13 @@ using API.Extensions;
 using AutoMapper;
 using Core.Entities.Identity;
 using Core.Interfaces;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
 
 namespace API.Controllers
 {
@@ -58,6 +62,64 @@ namespace API.Controllers
                 DisplayName = user.DisplayName
             };
         }
+
+        [Authorize]
+        [HttpGet("getallusers")]
+        public ActionResult<IList<UserDto>> GetAllUsers()
+        {
+            return _userManager.Users.Select((user) => new UserDto
+            {
+                Email = user.Email,
+                Token = _tokenService.CreateToken(user),
+                DisplayName = user.DisplayName
+            }).ToList();
+        }
+
+        //[HttpPost("LoginWithGoogle")]
+
+        //public IActionResult LoginWithGoogle(string returnUrl = "/")
+        //{
+        //    var props = new AuthenticationProperties
+        //    {
+        //        RedirectUri = Url.Action("GoogleLoginCallback"),
+        //        Items =
+        //    {
+        //        { "returnUrl", returnUrl }
+        //    }
+        //    };
+        //    return Challenge(props, GoogleDefaults.AuthenticationScheme);
+        //}
+
+        //[HttpPost("GoogleLoginCallback")]
+        //public async Task<ActionResult<UserDto>> GoogleLoginCallback()
+        //{
+        //    // read google identity from google's cookie
+        //    var result = await HttpContext.AuthenticateAsync(
+        //        GoogleDefaults.AuthenticationScheme);
+
+        //    if (result.Principal == null)
+        //        throw new Exception("Could not create a principal");
+        //    var externalClaims = result.Principal.Claims.ToList();
+
+        //    var subjectIdClaim = externalClaims.FirstOrDefault(
+        //        x => x.Type == ClaimTypes.NameIdentifier);
+
+        //    if (subjectIdClaim == null)
+        //        return Unauthorized(new ApiResponse(401));
+
+        //    var subjectValue = subjectIdClaim.Value;
+
+        //    var user = await _userManager.FindByNameAsync(subjectValue);
+
+        //    if (user == null) return Unauthorized(new ApiResponse(401));
+
+        //    return new UserDto
+        //    {
+        //        Email = user.Email,
+        //        Token = _tokenService.CreateToken(user),
+        //        DisplayName = user.DisplayName
+        //    };
+        //}
 
         [HttpPost("register")]
         public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)

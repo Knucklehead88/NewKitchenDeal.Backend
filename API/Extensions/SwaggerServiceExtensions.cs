@@ -34,7 +34,7 @@ namespace API.Extensions
                 };
 
                 c.AddSecurityRequirement(securityRequirement);
-                
+                c.CustomSchemaIds(type => type.ToString());
             });
             return services;
         }
