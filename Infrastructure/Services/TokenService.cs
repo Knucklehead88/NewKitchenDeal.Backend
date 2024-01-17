@@ -1,8 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Core.Entities;
 using Core.Entities.Identity;
 using Core.Interfaces;
+using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
@@ -12,12 +14,15 @@ namespace Infrastructure.Services
     {
         private readonly IConfiguration _config;
         private readonly SymmetricSecurityKey _key;
+        private readonly IConfigurationSection _googleSettings;
+
         public TokenService(IConfiguration config)
         {
             _config = config;
             _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Token:Key"]));
+            _googleSettings = _config.GetSection("Authentication:Google");
         }
-        
+
         public string CreateToken(AppUser user)
         {
             var claims = new List<Claim>
@@ -42,5 +47,24 @@ namespace Infrastructure.Services
 
             return tokenHandler.WriteToken(token);
         }
+
+        public async Task<GoogleJsonWebSignature.Payload> VerifyGoogleToken(ExternalAuth externalAuth)
+        {
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings()
+                {
+                    Audience = new List<string>() { _googleSettings.GetSection("ClientId").Value }
+                };
+                var payload = await GoogleJsonWebSignature.ValidateAsync(externalAuth.IdToken, settings);
+                return payload;
+            }
+            catch (Exception ex)
+            {
+                //log an exception
+                return null;
+            }
+        }
+
     }
 }

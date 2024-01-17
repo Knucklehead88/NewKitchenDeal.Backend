@@ -31,6 +31,7 @@ namespace API.Helpers
                 .ReverseMap();
                 //.ForMember(d => d.AppUserEmail, o => o.MapFrom(s => s.AppUser.Email));
             CreateMap<AppUserLocation, AppUserLocationDto>();
+            CreateMap<ExternalAuthDto, ExternalAuth>().ReverseMap();
         }
     }
 }

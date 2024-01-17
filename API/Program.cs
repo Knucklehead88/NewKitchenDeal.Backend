@@ -19,20 +19,12 @@ builder.Services.AddControllers();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();
-builder.Services.AddAuthentication(o => {
+builder.Services.AddAuthentication(o =>
+{
     //o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     o.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-})
-    .AddCookie()
-    .AddGoogle(googleOptions =>
-{
-    Console.WriteLine(configuration["Authentication:Google:ClientId"]);
-    //googleOptions.ClientId = configuration["Authentication:Google:ClientId"];
-    googleOptions.ClientId = "472422875387-da5cq1snb99gdmq9j3vn5r7s1d4fvsb1.apps.googleusercontent.com";
-    Console.WriteLine(configuration["Authentication:Google:ClientSecret"]);
-    //googleOptions.ClientSecret = configuration["Authentication:Google:ClientSecret"];
-    googleOptions.ClientSecret = "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";
 });
+
 
 var app = builder.Build();
 
