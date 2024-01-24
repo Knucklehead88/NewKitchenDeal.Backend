@@ -13,7 +13,19 @@ namespace Infrastructure.Data.Config
     {
         public void Configure(EntityTypeBuilder<BusinessInfo> builder)
         {
-            builder.HasMany(b => b.Locations).WithOne().OnDelete(DeleteBehavior.Cascade);    
+            builder
+                .HasMany(b => b.Locations)
+                .WithOne(b => b.BusinessInfo)
+                .HasForeignKey(b => b.BusinesslInfoId)
+                .IsRequired(false)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //builder
+            //    .HasMany(b => b.Trades)
+            //    .WithOne(b => b.BusinessInfo)
+            //    .HasForeignKey(b => b.BusinesslInfoId)
+            //    .IsRequired()
+            //    .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

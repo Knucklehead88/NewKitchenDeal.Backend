@@ -20,19 +20,19 @@ namespace Infrastructure.Services
             _config = config;
         }
 
-        public void SendEmail(string email, string subject, string messageBody)
+        public async Task SendEmailAsync(string email, string subject, string messageBody)
         {
             var message = new MimeMessage();
-            message.From.Add(new MailboxAddress("FromName", "fromAddress@gmail.com"));
+            message.From.Add(new MailboxAddress("NewProjectDeal", "office@newprojectdeal.com"));
             message.To.Add(new MailboxAddress("", email));
             message.Subject = subject;
             message.Body = new TextPart("plain") { Text = messageBody };
 
             using var client = new SmtpClient();
-            client.Connect("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            client.Authenticate(_config["Email:Address"], _config["Email:Passcode"]);
-            client.Send(message);
-            client.Disconnect(true);
+            await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_config["Email:Address"], _config["Email:Passcode"]);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
         }
     }
 }

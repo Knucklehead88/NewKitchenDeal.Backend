@@ -1,24 +1,20 @@
-﻿using Core.Entities.OrderAggregate;
-using System.Data.Common;
+﻿using Core.Entities.Identity;
 
-namespace Core.Entities.Identity
+namespace API.Dtos
 {
-    public class BusinessInfo
+    public class BusinessInfoDto
     {
-        public int Id { get; set; }
         public string BusinessName { get; set; }
-        public List<Trade> Trades { get; set; } = new();
+        public IReadOnlyList<TradeDto> Trades { get; set; }
         public string HourlyRate { get; set; }
         public string DailyRate { get; set; }
         public string Website { get; set; }
         public string Description { get; set; }
         public string VideoPresentation { get; set; }
         public string Projects { get; set; }
-        public List<Location> Locations { get; set; } = new();
+        public IReadOnlyList<LocationDto> Locations { get; set; }
         public string[] SpokenLanguages { get; set; }
         public int YearsOfExperience { get; set; }
-        public string AppUserId { get; set; }
-        public AppUser AppUser { get; set; }
 
     }
 }

@@ -11,7 +11,7 @@ namespace Core.Entities.Identity
         public int Id { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
-        public AppUserLocation Location { get; set; }
+        public Location Location { get; set; }
         public string WhatssAppNumber { get; set; }
         public string PhoneNumber { get; set; }
         public string FacebookProfile { get; set; }

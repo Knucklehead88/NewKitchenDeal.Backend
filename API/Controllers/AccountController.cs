@@ -15,6 +15,8 @@ using Microsoft.EntityFrameworkCore;
 using System.Text;
 using Google.Apis.Auth;
 using Core.Entities;
+using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
 
 namespace API.Controllers
 {
@@ -57,11 +59,11 @@ namespace API.Controllers
 
             if (user == null) return Unauthorized(new ApiResponse(401));
 
-            if(!user.EmailConfirmed)
-            {
-                return new BadRequestObjectResult(new ApiValidationErrorResponse
-                { Errors = new[] { "Email needs to be confirmed" } });
-            }
+            //if(!user.EmailConfirmed)
+            //{
+            //    return new BadRequestObjectResult(new ApiValidationErrorResponse
+            //    { Errors = new[] { "Email needs to be confirmed" } });
+            //}
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
@@ -70,6 +72,7 @@ namespace API.Controllers
             return new UserDto
             {
                 Email = user.Email,
+                EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
                 DisplayName = user.DisplayName
             };
@@ -87,8 +90,6 @@ namespace API.Controllers
             }).ToList();
         }
 
-
-
         [HttpPost("register")]
         public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
         {
@@ -102,53 +103,70 @@ namespace API.Controllers
             {
                 DisplayName = registerDto.DisplayName,
                 Email = registerDto.Email,
-                UserName = registerDto.Email
+                UserName = registerDto.DisplayName
             };
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
 
             if (!result.Succeeded) return BadRequest(new ApiResponse(400));
 
-            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-            var emailBody = "Please confirm your email address <a href=\"#URL#\">Click here </a> ";
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var callbackUrl = Request.Scheme + "://" + Request.Host + Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code });
-            var body = emailBody.Replace("#URL#", System.Text.Encodings.Web.HtmlEncoder.Default.Encode(callbackUrl));
+            var param = new Dictionary<string, string?>
+            {
+                {"token", token },
+                {"email", user.Email }
+            };
 
-            _emailService.SendEmail(user.Email, "Verify your email", body);
+            var callback = QueryHelpers.AddQueryString(registerDto.ClientURI, param);
+
+            await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+            //await _userManager.AddToRoleAsync(user, "Viewer");
 
             return new UserDto
             {
                 DisplayName = user.DisplayName,
                 Token = _tokenService.CreateToken(user),
+                EmailConfirmed = user.EmailConfirmed,
                 Email = user.Email
             };
         }
 
-        [HttpGet("ConfirmEmail")]
-        public async Task<IActionResult> ConfirmEmail(string userId, string code)
+        [HttpGet("emailconfirmation")]
+        public async Task<IActionResult> EmailConfirmation([FromQuery] string email, [FromQuery] string token)
         {
-            if(userId == null || code == null)
-            {
-                return BadRequest("Invalid email confirmation url");
-            }
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return Unauthorized(new ApiResponse(401));
 
-            var user = await _userManager.FindByIdAsync(userId);
+            var confirmResult = await _userManager.ConfirmEmailAsync(user, token);
+            if (!confirmResult.Succeeded)
+                return BadRequest(new ApiResponse(400, "Invalid Email Confirmation Request"));
 
-            if (user == null)
-            {
-                return BadRequest("Invalid email parameters");
-            }
-
-            //code = Encoding.UTF8.GetString(Convert.FromBase64String(code));
-            var result = await _userManager.ConfirmEmailAsync(user, code);
-            var status = result.Succeeded ? "Thank you for confirming your email" : 
-                "Your email is not confirmed, please try again later";
-
-            return Ok(status);
+            return Ok("Thank you for confirming your email");
         }
 
-        [HttpPost("ExternalLogin")]
+        [HttpGet("resendemailconfirmation")]
+        public async Task<IActionResult> ResendEmailConfirmation(ResendEmailDto resendEmailDto)
+        {
+            var user = await _userManager.FindByEmailAsync(resendEmailDto.Email);
+            if (user == null) return Unauthorized(new ApiResponse(401));
+
+            var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+
+            var param = new Dictionary<string, string?>
+            {
+                {"token", token },
+                {"email", user.Email }
+            };
+
+            var callback = QueryHelpers.AddQueryString(resendEmailDto.ClientURI, param);
+            await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+
+            return Ok();
+        }
+
+
+        [HttpPost("externallogin")]
         public async Task<ActionResult<UserDto>> ExternalLogin([FromBody] ExternalAuthDto externalAuthDto)
         {
             var externalAuth = _mapper.Map<ExternalAuthDto, ExternalAuth>(externalAuthDto);
@@ -214,5 +232,53 @@ namespace API.Controllers
 
             return BadRequest("Problem updating the user");
         }
+
+        [HttpPost("forgotpassword")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse(400, "Invalid Request"));
+
+            var user = await _userManager.FindByEmailAsync(forgotPasswordDto.Email);
+            if (user == null)
+                return BadRequest(new ApiResponse(401, "Email was not found."));
+
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var param = new Dictionary<string, string?>
+            {
+                {"token", token },
+                {"email", forgotPasswordDto.Email }
+            };
+
+            var callback = QueryHelpers.AddQueryString(forgotPasswordDto.ClientURI, param); 
+            await _emailService.SendEmailAsync(user.Email, "Reset password token", callback);
+            
+            return Ok();
+        }
+
+        [HttpPost("resetpassword")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto resetPasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse(400, "Invalid Request"));
+
+            var user = await _userManager.FindByEmailAsync(resetPasswordDto.Email);
+            if (user == null)
+                return BadRequest(new ApiResponse(401, "Email was not found."));
+
+            var resetPassResult = await _userManager.ResetPasswordAsync(user, resetPasswordDto.Token, resetPasswordDto.Password);
+            if (!resetPassResult.Succeeded)
+            {
+                var errors = resetPassResult.Errors.Select(e => e.Description);
+
+                return new BadRequestObjectResult(new ApiValidationErrorResponse
+                    { Errors = errors });
+            }
+
+            return Ok();
+        }
+
     }
 }

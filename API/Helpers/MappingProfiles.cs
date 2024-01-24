@@ -27,11 +27,20 @@ namespace API.Helpers
                 .ForMember(d => d.PictureUrl, o => o.MapFrom(s => s.ItemOrdered.PictureUrl))
                 .ForMember(d => d.PictureUrl, o => o.MapFrom<OrderItemUrlResolver>());
             CreateMap<PersonalInfo, PersonalInfoDto>()
-                .ForMember(c => c.AppUserEmail, option => option.Ignore())
+                .ForMember(c => c.Email, o => o.MapFrom(s => s.AppUser.Email))
                 .ReverseMap();
-                //.ForMember(d => d.AppUserEmail, o => o.MapFrom(s => s.AppUser.Email));
-            CreateMap<AppUserLocation, AppUserLocationDto>();
+            CreateMap<LocationDto, Location>()
+                .ForMember(a => a.PersonalInfo, opt => opt.Ignore())
+                //.ForMember(a => a.PersonalInfoId, opt => opt.Ignore())
+                .ForMember(a => a.BusinessInfo, opt => opt.Ignore())
+                //.ForMember(a => a.BusinessInfoId, opt => opt.Ignore())
+                .ForMember(a => a.Id, opt => opt.Ignore())
+                .ReverseMap();
             CreateMap<ExternalAuthDto, ExternalAuth>().ReverseMap();
+            CreateMap<BusinessInfoDto, BusinessInfo>()
+                .ReverseMap();
+            CreateMap<Trade, TradeDto>().ReverseMap();
+
         }
     }
 }

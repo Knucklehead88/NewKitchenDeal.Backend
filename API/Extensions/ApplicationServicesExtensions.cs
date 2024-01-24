@@ -18,7 +18,11 @@ namespace API.Extensions
             services.AddDbContext<StoreContext>(opt =>
             {
                 opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
-                //opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
+                // var env = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+                // if (string.IsNullOrEmpty(env)) {
+                //     Environment.SetEnvironmentVariable("DB_CONNECTION_STRING", "host=db;port=5432;username=appuser;password=secret;database=skinet");
+                // }
+                // opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
 
             });
             services.AddSingleton<IConnectionMultiplexer>(c => 

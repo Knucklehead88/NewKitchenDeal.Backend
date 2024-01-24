@@ -1,5 +1,6 @@
 ﻿using API.Dtos;
 using API.Errors;
+using API.Extensions;
 using AutoMapper;
 using Core.Entities.Identity;
 using Core.Interfaces;
@@ -7,7 +8,6 @@ using Infrastructure.Data.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using StackExchange.Redis;
 
 namespace API.Controllers
 {
@@ -15,45 +15,43 @@ namespace API.Controllers
     public class PersonalInfoController : BaseApiController
     {
         private readonly UserManager<AppUser> _userManager;
-        private readonly AppIdentityDbContext _appIdentityDbContext;
         private readonly IMapper _mapper;
 
 
         public PersonalInfoController(UserManager<AppUser> userManager, 
-            AppIdentityDbContext appIdentityDbContext,
             IMapper mapper)
         {
             _mapper = mapper;
             _userManager = userManager;
-            _appIdentityDbContext = appIdentityDbContext;
         }
 
         [HttpPost]
-        public async Task<ActionResult<PersonalInfo>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto)
+        public async Task<ActionResult<PersonalInfoDto>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto)
         {
-            var user = await _userManager.FindByEmailAsync(personalInfoDto.AppUserEmail);
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
 
-            if (user == null) return NotFound(new ApiResponse(404));
+            user.PersonalInfo = _mapper.Map<PersonalInfoDto, PersonalInfo>(personalInfoDto);
 
-            var personalInfo = _mapper.Map<PersonalInfoDto, PersonalInfo>(personalInfoDto);
-            user.PersonalInfo = personalInfo;
+            var result = await _userManager.UpdateAsync(user);
 
-            await _appIdentityDbContext.Users.AddAsync(user);
-            _appIdentityDbContext.SaveChanges();
-            
-            return Ok(personalInfo);
+            if (result.Succeeded) return Ok(_mapper.Map<PersonalInfoDto>(user.PersonalInfo));
+
+            return BadRequest(new ApiResponse(400, "Problem updating the user's personal info"));
 
         }
 
 
         [HttpGet]
-        public async Task<ActionResult<PersonalInfoDto>> GetUserPerfonalInfo(string appUserEmail)
+        public async Task<ActionResult<PersonalInfoDto>> GetUserPerfonalInfo()
         {
-            var user = await _userManager.FindByIdAsync(appUserEmail);
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
 
-            if (user == null) return NotFound(new ApiResponse(404));
+            if (user.BusinessInfo == null)
+            {
+                return NotFound(new ApiResponse(404));
+            }
 
-            return _mapper.Map<PersonalInfoDto>(user.PersonalInfo);
+            return _mapper.Map<PersonalInfo, PersonalInfoDto>(user.PersonalInfo);
 
         }
 
