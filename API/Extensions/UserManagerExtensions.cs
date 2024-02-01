@@ -37,11 +37,15 @@ namespace API.Extensions
                     .ThenInclude(x => x.Locations)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Trades)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.SpokenLanguages)
                 .SingleOrDefaultAsync(x => x.Email == email);
         }
 
-        public static async Task<AppUser> FindUserByEmailWithBusinessInfo(this UserManager<AppUser> userManager, string email)
+        public static async Task<AppUser> FindUserByEmailWithBusinessInfo(this UserManager<AppUser> userManager, ClaimsPrincipal user)
         {
+            var email = user.FindFirstValue(ClaimTypes.Email);
+
             return await userManager.Users
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Locations)

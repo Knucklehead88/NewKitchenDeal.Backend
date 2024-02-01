@@ -2,10 +2,10 @@
 
 namespace API.Dtos
 {
-    public class TradeDto
+    public class ResponseLanguageDto: LanguageDto
     {
         [Required]
-        public int Id { get; set; }
+        public string Name { get; set; }
 
     }
 }

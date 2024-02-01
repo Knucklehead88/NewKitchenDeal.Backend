@@ -5,9 +5,6 @@ namespace API.Dtos
 {
     public class PersonalInfoDto
     {
-            [Required]
-            [EmailAddress]
-            public string Email { get; set; }
             
             [Required]
             public string FirstName { get; set; }
@@ -17,10 +14,10 @@ namespace API.Dtos
 
             public LocationDto Location { get; set; }
 
-            [RegularExpression("^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$")]
+            [Phone]
             public string WhatssAppNumber { get; set; }
-
-            [RegularExpression("^(\\+\\d{1,2}\\s?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}$")]
+            
+            [Phone]
             public string PhoneNumber { get; set; }
             public string FacebookProfile { get; set; }
             public string TwitterProfile { get; set; }

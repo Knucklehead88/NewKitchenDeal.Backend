@@ -13,19 +13,20 @@ namespace Infrastructure.Data.Config
     {
         public void Configure(EntityTypeBuilder<BusinessInfo> builder)
         {
+
             builder
-                .HasMany(b => b.Locations)
+                .HasMany(b => b.Trades)
                 .WithOne(b => b.BusinessInfo)
-                .HasForeignKey(b => b.BusinesslInfoId)
-                .IsRequired(false)
+                .HasForeignKey(b => b.BusinessInfoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            //builder
-            //    .HasMany(b => b.Trades)
-            //    .WithOne(b => b.BusinessInfo)
-            //    .HasForeignKey(b => b.BusinesslInfoId)
-            //    .IsRequired()
-            //    .OnDelete(DeleteBehavior.Cascade);
+            builder
+                .HasMany(b => b.SpokenLanguages)
+                .WithOne(b => b.BusinessInfo)
+                .HasForeignKey(b => b.BusinessInfoId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+
         }
     }
 }

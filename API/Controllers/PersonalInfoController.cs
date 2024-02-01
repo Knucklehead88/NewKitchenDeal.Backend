@@ -46,7 +46,7 @@ namespace API.Controllers
         {
             var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
 
-            if (user.BusinessInfo == null)
+            if (user.PersonalInfo == null)
             {
                 return NotFound(new ApiResponse(404));
             }

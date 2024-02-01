@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Data.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Identity.Migrations
 {
     [DbContext(typeof(AppIdentityDbContext))]
-    partial class AppIdentityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240125205122_AddPIandBI")]
+    partial class AddPIandBI
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -169,52 +172,6 @@ namespace Infrastructure.Identity.Migrations
                     b.ToTable("BusinessInfo", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Entities.Identity.BusinessInfoLanguage", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BusinessInfoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LanguageId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BusinessInfoId");
-
-                    b.HasIndex("LanguageId");
-
-                    b.ToTable("BusinessInfoLanguage");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.BusinessInfoTrade", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BusinessInfoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("TradeId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BusinessInfoId");
-
-                    b.HasIndex("TradeId");
-
-                    b.ToTable("BusinessInfoTrade");
-                });
-
             modelBuilder.Entity("Core.Entities.Identity.Language", b =>
                 {
                     b.Property<int>("Id")
@@ -223,12 +180,17 @@ namespace Infrastructure.Identity.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BusinessInfoId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Languages");
+                    b.HasIndex("BusinessInfoId");
+
+                    b.ToTable("Language");
                 });
 
             modelBuilder.Entity("Core.Entities.Identity.Location", b =>
@@ -314,12 +276,17 @@ namespace Infrastructure.Identity.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("BusinessInfoId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
 
-                    b.ToTable("Trades");
+                    b.HasIndex("BusinessInfoId");
+
+                    b.ToTable("Trade");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole", b =>
@@ -472,42 +439,11 @@ namespace Infrastructure.Identity.Migrations
                     b.Navigation("AppUser");
                 });
 
-            modelBuilder.Entity("Core.Entities.Identity.BusinessInfoLanguage", b =>
+            modelBuilder.Entity("Core.Entities.Identity.Language", b =>
                 {
-                    b.HasOne("Core.Entities.Identity.BusinessInfo", "BusinessInfo")
+                    b.HasOne("Core.Entities.Identity.BusinessInfo", null)
                         .WithMany("SpokenLanguages")
-                        .HasForeignKey("BusinessInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Core.Entities.Identity.Language", "Language")
-                        .WithMany()
-                        .HasForeignKey("LanguageId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BusinessInfo");
-
-                    b.Navigation("Language");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.BusinessInfoTrade", b =>
-                {
-                    b.HasOne("Core.Entities.Identity.BusinessInfo", "BusinessInfo")
-                        .WithMany("Trades")
-                        .HasForeignKey("BusinessInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Core.Entities.Identity.Trade", "Trade")
-                        .WithMany()
-                        .HasForeignKey("TradeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BusinessInfo");
-
-                    b.Navigation("Trade");
+                        .HasForeignKey("BusinessInfoId");
                 });
 
             modelBuilder.Entity("Core.Entities.Identity.Location", b =>
@@ -530,6 +466,13 @@ namespace Infrastructure.Identity.Migrations
                     b.Navigation("AppUser");
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("Core.Entities.Identity.Trade", b =>
+                {
+                    b.HasOne("Core.Entities.Identity.BusinessInfo", null)
+                        .WithMany("Trades")
+                        .HasForeignKey("BusinessInfoId");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

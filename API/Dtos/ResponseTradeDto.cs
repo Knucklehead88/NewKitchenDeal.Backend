@@ -2,10 +2,9 @@
 
 namespace API.Dtos
 {
-    public class TradeDto
+    public class ResponseTradeDto: TradeDto
     {
         [Required]
-        public int Id { get; set; }
-
+        public string Name { get; set; }
     }
 }

@@ -1,7 +1,8 @@
 ﻿namespace Core.Entities.Identity
 {
-    public class Trade: BaseEntity
+    public class Language: BaseEntity
     {
         public string Name { get; set; }
+
     }
 }

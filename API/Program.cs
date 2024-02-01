@@ -18,12 +18,8 @@ var configuration = builder.Configuration;
 builder.Services.AddControllers();
 builder.Services.AddApplicationServices(builder.Configuration);
 builder.Services.AddIdentityServices(builder.Configuration);
+// builder.Services.AddStripe(builder.Configuration);
 builder.Services.AddSwaggerDocumentation();
-builder.Services.AddAuthentication(o =>
-{
-    //o.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    o.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
-});
 
 
 var app = builder.Build();
@@ -62,6 +58,7 @@ try
     await identityContext.Database.MigrateAsync();
     //await StoreContextSeed.SeedAsync(context);
     await AppIdentityDbContextSeed.SeedUsersAsync(userManager);
+    await AppIdentityDbContextInformationSeed.SeedTradesAndLanguagesAsync(identityContext);
 }
 catch (Exception ex)
 {

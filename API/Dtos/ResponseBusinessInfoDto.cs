@@ -3,11 +3,11 @@ using System.ComponentModel.DataAnnotations;
 
 namespace API.Dtos
 {
-    public class BusinessInfoDto
+    public class ResponseBusinessInfoDto
     {
         [Required]
         public string BusinessName { get; set; }
-        public List<TradeDto> Trades { get; set; }
+        public List<ResponseTradeDto> Trades { get; set; }
         public string HourlyRate { get; set; }
         public string DailyRate { get; set; }
         public string Website { get; set; }
@@ -15,7 +15,7 @@ namespace API.Dtos
         public string VideoPresentation { get; set; }
         public string Projects { get; set; }
         public List<LocationDto> Locations { get; set; }
-        public List<LanguageDto> SpokenLanguages { get; set; }
+        public List<ResponseLanguageDto> SpokenLanguages { get; set; }
         public int YearsOfExperience { get; set; }
 
     }

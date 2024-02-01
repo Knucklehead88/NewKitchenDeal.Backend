@@ -38,6 +38,24 @@ namespace API.Helpers
                 .ReverseMap();
             CreateMap<ExternalAuthDto, ExternalAuth>().ReverseMap();
             CreateMap<BusinessInfoDto, BusinessInfo>()
+                .ForMember(a => a.Trades, opt => opt.Ignore())
+                .ForMember(a => a.SpokenLanguages, opt => opt.Ignore())
+                .ReverseMap();
+
+            CreateMap<BusinessInfo, ResponseBusinessInfoDto>()
+                .ForMember(a => a.Trades, opt => opt.Ignore())
+                .ForMember(a => a.SpokenLanguages, opt => opt.Ignore());
+
+            CreateMap<ResponseBusinessInfoDto, BusinessInfo>()
+                .ForMember(a => a.Trades, opt => opt.Ignore())
+                .ForMember(a => a.SpokenLanguages, opt => opt.Ignore());
+
+            CreateMap<Trade, TradeDto>()
+                .ReverseMap();
+            CreateMap<Trade, ResponseTradeDto>()
+                .ReverseMap();
+            CreateMap<Language, LanguageDto>().ReverseMap();
+            CreateMap<Language, ResponseLanguageDto>().ReverseMap();
                 .ReverseMap();
             CreateMap<Trade, TradeDto>().ReverseMap();
 

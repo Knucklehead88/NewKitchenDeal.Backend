@@ -2,7 +2,7 @@
 
 namespace API.Dtos
 {
-    public class TradeDto
+    public class LanguageDto
     {
         [Required]
         public int Id { get; set; }
