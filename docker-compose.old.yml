@@ -1,35 +1,43 @@
-networks:
-  dockerapi-dev:
-    driver: bridge
-
 services:
   api:
     image: avmsil/api:latest
     depends_on:
       - db
-    build: 
-      context: .
-      dockerfile: /API/Dockerfile
     ports:
       - "8000:80"
     environment:
       DB_CONNECTION_STRING: "host=db;port=5432;username=appuser;password=secret;database=skinet"
       IDENTITY_CONNECTION_STRING: "host=db;port=5432;username=appuser;password=secret;database=identity"
-    networks:
-      - dockerapi-dev
 
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=root
+      - HTTP_PASSWORD=secret
+    ports:
+      - 8081:8081
+    depends_on:
+      - redis
+  
   db:
-    image: postgres:latest
+    image: postgres
     environment:
       POSTGRES_PASSWORD: secret
       POSTGRES_USER: appuser
     ports:
-      - "5432"
-    restart: always
+      - 5432:5432
     volumes:
       - postgres-data:/data
-    networks:
-      - dockerapi-dev
 
 volumes:
+  redis-data:
   postgres-data:
