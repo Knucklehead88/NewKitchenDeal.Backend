@@ -280,5 +280,17 @@ namespace API.Controllers
             return Ok();
         }
 
+        [HttpPost("getintouch")]
+        public async Task<IActionResult> GetInTouch([FromBody] SendToEmailDto sendToEmailDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse(400, "Invalid Request"));
+
+            var sendToEmail = _mapper.Map<SendToEmailDto, SendToEmail>(sendToEmailDto);
+
+            await _emailService.GetInTouchAsync(sendToEmail);
+            return Ok();
+        }
+
     }
 }
