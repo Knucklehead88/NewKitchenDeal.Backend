@@ -183,7 +183,7 @@ namespace API.Controllers
                     user = new AppUser { Email = payload.Email, UserName = payload.Email, DisplayName = payload.GivenName };
                     await _userManager.CreateAsync(user);
                     //prepare and send an email for the email confirmation
-                    await _userManager.AddToRoleAsync(user, "Viewer");
+                    //await _userManager.AddToRoleAsync(user, "Viewer");
                     await _userManager.AddLoginAsync(user, info);
                 }
                 else
@@ -234,7 +234,6 @@ namespace API.Controllers
         }
 
         [HttpPost("forgotpassword")]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
         {
             if (!ModelState.IsValid)
@@ -246,7 +245,7 @@ namespace API.Controllers
 
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var param = new Dictionary<string, string?>
+            var param = new Dictionary<string, string>
             {
                 {"token", token },
                 {"email", forgotPasswordDto.Email }
@@ -255,6 +254,28 @@ namespace API.Controllers
             var callback = QueryHelpers.AddQueryString(forgotPasswordDto.ClientURI, param); 
             await _emailService.SendEmailAsync(user.Email, "Reset password token", callback);
             
+            return Ok();
+        }
+
+        [HttpPost("changepassword")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto changePasswordDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(new ApiResponse(400, "Invalid Request"));
+
+            var user = await _userManager.FindByEmailAsync(changePasswordDto.Email);
+            if (user == null)
+                return BadRequest(new ApiResponse(401, "Email was not found."));
+
+            var changePassResult = await _userManager.ChangePasswordAsync(user, changePasswordDto.CurrentPassword, changePasswordDto.NewPassword);
+            if (!changePassResult.Succeeded)
+            {
+                var errors = changePassResult.Errors.Select(e => e.Description);
+
+                return new BadRequestObjectResult(new ApiValidationErrorResponse
+                    { Errors = errors });
+            }
+
             return Ok();
         }
 
@@ -274,7 +295,7 @@ namespace API.Controllers
                 var errors = resetPassResult.Errors.Select(e => e.Description);
 
                 return new BadRequestObjectResult(new ApiValidationErrorResponse
-                    { Errors = errors });
+                { Errors = errors });
             }
 
             return Ok();
