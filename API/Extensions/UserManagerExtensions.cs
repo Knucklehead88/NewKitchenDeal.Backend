@@ -23,7 +23,7 @@ namespace API.Extensions
 
             return await userManager.Users
                 .Include(x => x.PersonalInfo)
-                    .ThenInclude(x => x.Location)
+                    .ThenInclude(x => x.Locations)
                 .SingleOrDefaultAsync(x => x.Email == email);
         }
 

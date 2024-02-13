@@ -12,7 +12,7 @@ namespace API.Dtos
             [Required]
             public string LastName { get; set; }
 
-            public LocationDto Location { get; set; }
+            public List<LocationDto> Locations { get; set; }
 
             [Phone]
             public string WhatssAppNumber { get; set; }
@@ -23,6 +23,8 @@ namespace API.Dtos
             public string TwitterProfile { get; set; }
             public string TikTokProfile { get; set; }
             public string ProfilePicture { get; set; }
+            public bool CanReceiveTextMessages { get; set; }
+
 
     }
 }

@@ -13,12 +13,11 @@ namespace Infrastructure.Data.Config
     {
         public void Configure(EntityTypeBuilder<PersonalInfo> builder)
         {
-            //builder
-            //    .HasOne(p => p.Location)
-            //    .WithOne(p => p.PersonalInfo)
-            //    .HasForeignKey<Location>(p => p.PersonalInfoId)
-            //    .IsRequired(false)
-            //    .OnDelete(DeleteBehavior.Cascade);
+            builder
+                .HasMany(p => p.Locations)
+                .WithOne(p => p.PersonalInfo)
+                .HasForeignKey(p => p.PersonalInfoId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

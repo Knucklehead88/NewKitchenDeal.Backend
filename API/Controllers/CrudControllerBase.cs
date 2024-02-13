@@ -10,26 +10,31 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using static StackExchange.Redis.Role;
 
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace API.Controllers
 {
-    public class CrudControllerBase<T> : BaseApiController where T: BaseEntity
+    public class CrudControllerBase<T, TResult> : BaseApiController where T: BaseEntity
     {
         private readonly ICrudService<T> _crudService;
+        private readonly IMapper _mapper;
 
-        public CrudControllerBase(ICrudService<T> crudService)
+
+        public CrudControllerBase(ICrudService<T> crudService, IMapper mapper)
         {
             _crudService = crudService;
+            _mapper = mapper;
         }
 
 
         [HttpGet]
-        public async Task<ActionResult<IReadOnlyList<T>>> Get()
+        public async Task<ActionResult<IReadOnlyList<TResult>>> Get()
         {
             var entities =  await _crudService.ListAllAsync();
-            return Ok(entities);
+
+            return Ok(_mapper.Map<IReadOnlyList<TResult>>(entities));
         }
 
         [HttpGet("{id}")]
@@ -39,13 +44,15 @@ namespace API.Controllers
             if (entity == null)
                 return NotFound();
 
-            return Ok(entity);
+            return Ok(_mapper.Map<TResult>(entity));
         }
 
         [HttpPost]
-        public async Task<IActionResult> Post(T entity)
+        public async Task<IActionResult> Post(TResult entityDto)
         {
-             await _crudService.AddAsync(entity);
+            var entity = _mapper.Map<T>(entityDto);
+
+            await _crudService.AddAsync(entity);
             return CreatedAtAction("Post", new { id = entity.Id }, entity);
         }
 

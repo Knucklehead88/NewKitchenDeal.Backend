@@ -16,7 +16,7 @@ namespace API.Dtos
         public string Projects { get; set; }
         public List<LocationDto> Locations { get; set; }
         public List<LanguageDto> SpokenLanguages { get; set; }
-        public int YearsOfExperience { get; set; }
+        public long StartDateOfWork { get; set; }
 
     }
 }

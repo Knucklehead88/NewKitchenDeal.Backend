@@ -26,7 +26,11 @@ namespace Infrastructure.Data.Config
                 .HasForeignKey(b => b.BusinessInfoId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-
+            builder
+                .HasMany(b => b.Locations)
+                .WithOne(b => b.BusinessInfo)
+                .HasForeignKey(b => b.BusinessInfoId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
     }
 }

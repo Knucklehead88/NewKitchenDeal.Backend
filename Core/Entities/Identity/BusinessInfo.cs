@@ -16,9 +16,9 @@ namespace Core.Entities.Identity
         public string Description { get; set; }
         public string VideoPresentation { get; set; }
         public string Projects { get; set; }
-        public List<Location> Locations { get; set; } = [];
+        public List<BusinessInfoLocation> Locations { get; set; }
         public List<BusinessInfoLanguage> SpokenLanguages { get; set; } = [];
-        public int YearsOfExperience { get; set; }
+        public long StartDateOfWork { get; set; }
         public string AppUserId { get; set; }
         public AppUser AppUser { get; set; }
 

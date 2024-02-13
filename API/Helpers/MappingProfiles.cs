@@ -26,9 +26,13 @@ namespace API.Helpers
                 .ForMember(d => d.ProductName, o => o.MapFrom(s => s.ItemOrdered.ProductName))
                 .ForMember(d => d.PictureUrl, o => o.MapFrom(s => s.ItemOrdered.PictureUrl))
                 .ForMember(d => d.PictureUrl, o => o.MapFrom<OrderItemUrlResolver>());
+
             CreateMap<PersonalInfo, PersonalInfoDto>()
-                .ForMember(c => c.Email, o => o.MapFrom(s => s.AppUser.Email))
-                .ReverseMap();
+                .ForMember(a => a.Locations, opt => opt.Ignore());
+
+            CreateMap<PersonalInfoDto, PersonalInfo>()
+                .ForMember(a => a.Locations, opt => opt.Ignore());
+
             CreateMap<LocationDto, Location>()
                 .ForMember(a => a.PersonalInfo, opt => opt.Ignore())
                 //.ForMember(a => a.PersonalInfoId, opt => opt.Ignore())
@@ -36,15 +40,19 @@ namespace API.Helpers
                 //.ForMember(a => a.BusinessInfoId, opt => opt.Ignore())
                 .ForMember(a => a.Id, opt => opt.Ignore())
                 .ReverseMap();
+
             CreateMap<ExternalAuthDto, ExternalAuth>().ReverseMap();
             CreateMap<BusinessInfoDto, BusinessInfo>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
                 .ForMember(a => a.SpokenLanguages, opt => opt.Ignore())
+                .ForMember(a => a.Locations, opt => opt.Ignore())
                 .ReverseMap();
 
             CreateMap<BusinessInfo, ResponseBusinessInfoDto>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
-                .ForMember(a => a.SpokenLanguages, opt => opt.Ignore());
+                .ForMember(a => a.SpokenLanguages, opt => opt.Ignore())
+                .ForMember(a => a.Locations, opt => opt.Ignore());
+
 
             CreateMap<ResponseBusinessInfoDto, BusinessInfo>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
@@ -58,6 +66,9 @@ namespace API.Helpers
             CreateMap<Language, ResponseLanguageDto>().ReverseMap();
                 .ReverseMap();
             CreateMap<Trade, TradeDto>().ReverseMap();
+
+            CreateMap<SendToEmail, SendToEmailDto>()
+                .ReverseMap();
 
         }
     }

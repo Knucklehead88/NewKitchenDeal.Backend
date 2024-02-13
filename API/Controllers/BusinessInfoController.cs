@@ -2,6 +2,7 @@
 using API.Errors;
 using API.Extensions;
 using AutoMapper;
+using Core.Entities;
 using Core.Entities.Identity;
 using Core.Interfaces;
 using Infrastructure.Data.Identity;
@@ -21,18 +22,22 @@ namespace API.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly ICrudService<Trade> _tradeService;
         private readonly ICrudService<Language> _languageService;
+        private readonly ICrudService<Location> _locationService;
+
         private readonly IMapper _mapper;
 
 
         public BusinessInfoController(UserManager<AppUser> userManager,
             ICrudService<Trade> tradeService,
             ICrudService<Language> languageService,
+            ICrudService<Location> locationService,
             IMapper mapper)
         {
             _mapper = mapper;
             _userManager = userManager;
             _tradeService = tradeService;
             _languageService = languageService;
+            _locationService = locationService;
         }
 
         [HttpPost]
@@ -72,6 +77,14 @@ namespace API.Controllers
                 Trade = t,
                 BusinessInfo = businessInfo
             }));
+
+            var businessInfoLocations = businessInfoDto.Locations.Select(l => new BusinessInfoLocation()
+            {
+                Location = _mapper.Map<Location>(l),
+                BusinessInfo = businessInfo
+            }).ToList();
+            businessInfo.Locations = businessInfoLocations;
+
             user.BusinessInfo = businessInfo;
             var result = await _userManager.UpdateAsync(user);
             if (result.Succeeded)
@@ -81,6 +94,7 @@ namespace API.Controllers
                 var responseBusinessInfoDto = _mapper.Map<ResponseBusinessInfoDto>(user.BusinessInfo);
                 responseBusinessInfoDto.SpokenLanguages = languageDtos;
                 responseBusinessInfoDto.Trades = tradeDtos;
+                responseBusinessInfoDto.Locations = businessInfoDto.Locations;
 
                 return Ok(responseBusinessInfoDto);
             }
@@ -107,10 +121,22 @@ namespace API.Controllers
             var trades = await _tradeService.ListAllAsync();
             var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
 
-            if (languagesDto.Count != 0) businessInfoDto.SpokenLanguages = languagesDto;
+            var locations = await _locationService.ListAllAsync();
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(locations.Where(l => user.BusinessInfo.Locations.Any(lo => lo.LocationId == l.Id)).ToList());
+
+            if (languagesDto.Count != 0)
+            {
+                businessInfoDto.SpokenLanguages = languagesDto;
+            }
+
             if (tradesDto.Count != 0)
             {
                 businessInfoDto.Trades = tradesDto;
+            }
+
+            if (locationsDto.Count != 0)
+            {
+                businessInfoDto.Locations = locationsDto;
             }
 
             return businessInfoDto;
