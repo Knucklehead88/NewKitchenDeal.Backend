@@ -10,15 +10,10 @@ using Microsoft.AspNetCore.Mvc;
 namespace API.Controllers
 {
     [Authorize]
-    public class OrdersController : BaseApiController
+    public class OrdersController(IOrderService orderService, IMapper mapper) : BaseApiController
     {
-        private readonly IOrderService _orderService;
-        private readonly IMapper _mapper;
-        public OrdersController(IOrderService orderService, IMapper mapper)
-        {
-            _mapper = mapper;
-            _orderService = orderService;
-        }
+        private readonly IOrderService _orderService = orderService;
+        private readonly IMapper _mapper = mapper;
 
         [HttpPost]
         public async Task<ActionResult<Order>> CreateOrder(OrderDto orderDto)

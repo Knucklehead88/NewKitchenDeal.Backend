@@ -27,6 +27,14 @@ namespace API.Controllers
         }
 
         [Cached(600)]
+        [HttpGet("getallproducts")]
+        public async Task<ActionResult<IReadOnlyList<ProductToReturnDto>>> GetAllProducts()
+        {
+            var products = await _productsRepo.ListAllAsync();
+            return Ok(_mapper.Map<IReadOnlyList<ProductToReturnDto>>(products));
+        }
+
+        [Cached(600)]
         [HttpGet]
         public async Task<ActionResult<Pagination<ProductToReturnDto>>> GetProducts(
             [FromQuery] ProductSpecParams productParams)

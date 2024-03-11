@@ -22,6 +22,7 @@ namespace API.Extensions
             var email = user.FindFirstValue(ClaimTypes.Email);
 
             return await userManager.Users
+                .Include(x => x.Subscription)
                 .Include(x => x.PersonalInfo)
                     .ThenInclude(x => x.Locations)
                 .SingleOrDefaultAsync(x => x.Email == email);
@@ -33,6 +34,7 @@ namespace API.Extensions
             var email = user.FindFirstValue(ClaimTypes.Email);
 
             return await userManager.Users
+                .Include(x => x.Subscription)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Locations)
                 .Include(x => x.BusinessInfo)
@@ -47,6 +49,7 @@ namespace API.Extensions
             var email = user.FindFirstValue(ClaimTypes.Email);
 
             return await userManager.Users
+                .Include(x => x.Subscription)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Locations)
                 .Include(x => x.BusinessInfo)
@@ -58,6 +61,7 @@ namespace API.Extensions
             ClaimsPrincipal user)
         {
             return await userManager.Users
+                .Include(x => x.Subscription)
                 .SingleOrDefaultAsync(x => x.Email == user.FindFirstValue(ClaimTypes.Email));
         }
     }

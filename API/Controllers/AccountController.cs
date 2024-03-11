@@ -17,6 +17,7 @@ using Google.Apis.Auth;
 using Core.Entities;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
+using Core.Interfaces.Stripe;
 
 namespace API.Controllers
 {
@@ -27,12 +28,14 @@ namespace API.Controllers
         private readonly ITokenService _tokenService;
         private readonly IMapper _mapper;
         private readonly IEmailService _emailService;
+        private readonly ICustomersService _customerService;
 
         public AccountController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
-            ITokenService tokenService, IMapper mapper, IEmailService emailService)
+            ITokenService tokenService, IMapper mapper, IEmailService emailService, ICustomersService customerService)
         {
             _mapper = mapper;
             _emailService = emailService;
+            _customerService = customerService;
             _tokenService = tokenService;
             _signInManager = signInManager;
             _userManager = userManager;
@@ -47,8 +50,11 @@ namespace API.Controllers
             return new UserDto
             {
                 Email = user.Email,
+                EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
-                DisplayName = user.DisplayName
+                DisplayName = user.DisplayName,
+                Subscription = user.Subscription,
+                CustomerId = user.CustomerId
             };
         }
 
@@ -59,10 +65,10 @@ namespace API.Controllers
 
             if (user == null) return Unauthorized(new ApiResponse(401));
 
-            //if(!user.EmailConfirmed)
+            //if (!user.EmailConfirmed)
             //{
             //    return new BadRequestObjectResult(new ApiValidationErrorResponse
-            //    { Errors = new[] { "Email needs to be confirmed" } });
+            //    { Errors = [ "Email needs to be confirmed" ] });
             //}
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
@@ -74,7 +80,9 @@ namespace API.Controllers
                 Email = user.Email,
                 EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
-                DisplayName = user.DisplayName
+                DisplayName = user.DisplayName,
+                Subscription = user.Subscription,
+                CustomerId = user.CustomerId
             };
         }
 
@@ -85,8 +93,11 @@ namespace API.Controllers
             return _userManager.Users.Select((user) => new UserDto
             {
                 Email = user.Email,
+                EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
-                DisplayName = user.DisplayName
+                DisplayName = user.DisplayName,
+                Subscription = user.Subscription,
+                CustomerId = user.CustomerId
             }).ToList();
         }
 
@@ -96,14 +107,16 @@ namespace API.Controllers
             if (CheckEmailExistsAsync(registerDto.Email).Result.Value)
             {
                 return new BadRequestObjectResult(new ApiValidationErrorResponse 
-                    { Errors = new[] { "Email address is in use" } });
+                    { Errors = ["Email address is in use"] });
             }
+            var customer = await _customerService.CreateCustomerAsync(registerDto.DisplayName, registerDto.Email);
 
             var user = new AppUser
             {
                 DisplayName = registerDto.DisplayName,
                 Email = registerDto.Email,
-                UserName = registerDto.DisplayName
+                UserName = registerDto.DisplayName,
+                CustomerId = customer.Id
             };
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
@@ -112,7 +125,7 @@ namespace API.Controllers
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var param = new Dictionary<string, string?>
+            var param = new Dictionary<string, string>
             {
                 {"token", token },
                 {"email", user.Email }
@@ -128,7 +141,8 @@ namespace API.Controllers
                 DisplayName = user.DisplayName,
                 Token = _tokenService.CreateToken(user),
                 EmailConfirmed = user.EmailConfirmed,
-                Email = user.Email
+                Email = user.Email,
+                CustomerId = user.CustomerId,
             };
         }
 
@@ -146,14 +160,14 @@ namespace API.Controllers
         }
 
         [HttpGet("resendemailconfirmation")]
-        public async Task<IActionResult> ResendEmailConfirmation(ResendEmailDto resendEmailDto)
+        public async Task<IActionResult> ResendEmailConfirmation([FromQuery]ResendEmailDto resendEmailDto)
         {
             var user = await _userManager.FindByEmailAsync(resendEmailDto.Email);
             if (user == null) return Unauthorized(new ApiResponse(401));
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
-            var param = new Dictionary<string, string?>
+            var param = new Dictionary<string, string>
             {
                 {"token", token },
                 {"email", user.Email }
@@ -194,7 +208,7 @@ namespace API.Controllers
             if (user == null)
                 return BadRequest(new ApiResponse(400, "Invalid External Authentication."));
             //check for the Locked out account
-
+            var customer = await _customerService.CreateCustomerAsync(user.DisplayName, user.Email);
             return new UserDto
             {
                 DisplayName = user.DisplayName,
@@ -232,6 +246,21 @@ namespace API.Controllers
 
             return BadRequest("Problem updating the user");
         }
+
+        //[Authorize]
+        //[HttpPut("subscription")]
+        //public async Task<ActionResult<AddressDto>> UpdateSubscription(Subscription subscription) 
+        //{
+        //    var user = await _userManager.FindUserByClaimsPrincipleWithAddress(User);
+
+        //    //user.Address = _mapper.Map<AddressDto, Address>(address);
+
+        //    var result = await _userManager.UpdateAsync(user);
+
+        //    if (result.Succeeded) return Ok(_mapper.Map<AddressDto>(user.Address));
+
+        //    return BadRequest("Problem updating the user");
+        //}
 
         [HttpPost("forgotpassword")]
         public async Task<IActionResult> ForgotPassword(ForgotPasswordDto forgotPasswordDto)

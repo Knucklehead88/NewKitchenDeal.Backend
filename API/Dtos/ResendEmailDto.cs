@@ -8,6 +8,6 @@ namespace API.Dtos
         [EmailAddress]
         public string Email { get; set; }
 
-        public string? ClientURI { get; set; } = null;
+        public string ClientURI { get; set; } = string.Empty;
     }
 }

@@ -10,7 +10,7 @@ namespace API.Dtos
         [Required(ErrorMessage = "Password is required")]
         public string NewPassword { get; set; }
 
-        [Compare("Password", ErrorMessage = "The new password and confirmation password do not match.")]
+        [Compare("NewPassword", ErrorMessage = "The new password and confirmation password do not match.")]
         public string ConfirmNewPassword { get; set; }
         public string Email { get; set; }
     }

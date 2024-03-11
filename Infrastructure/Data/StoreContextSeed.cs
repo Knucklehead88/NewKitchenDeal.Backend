@@ -8,16 +8,16 @@ namespace Infrastructure.Data
 {
     public class StoreContextSeed
     {
-        public static async Task SeedAsync(StoreContext context)
+        public static async Task SeedAsync(StoreContext context, List<Product> stripeProducts = null)
         {
             var path = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            if (!context.ProductBrands.Any())
-            {
-                var brandsData = File.ReadAllText(path + @"/Data/SeedData/brands.json");
-                var brands = JsonSerializer.Deserialize<List<ProductBrand>>(brandsData);
-                context.ProductBrands.AddRange(brands);
-            }
+            // if (!context.ProductBrands.Any())
+            // {
+            //     var brandsData = File.ReadAllText(path + @"/Data/SeedData/brands.json");
+            //     var brands = JsonSerializer.Deserialize<List<ProductBrand>>(brandsData);
+            //     context.ProductBrands.AddRange(brands);
+            // }
 
             if (!context.ProductTypes.Any())
             {
@@ -33,12 +33,12 @@ namespace Infrastructure.Data
                 context.Products.AddRange(products);
             }
 
-            if (!context.DeliveryMethods.Any())
-            {
-                var deliveryData = File.ReadAllText(path + @"/Data/SeedData/delivery.json");
-                var methods = JsonSerializer.Deserialize<List<DeliveryMethod>>(deliveryData);
-                context.DeliveryMethods.AddRange(methods);
-            }
+            // if (!context.DeliveryMethods.Any())
+            // {
+            //     var deliveryData = File.ReadAllText(path + @"/Data/SeedData/delivery.json");
+            //     var methods = JsonSerializer.Deserialize<List<DeliveryMethod>>(deliveryData);
+            //     context.DeliveryMethods.AddRange(methods);
+            // }
 
             if (context.ChangeTracker.HasChanges()) await context.SaveChangesAsync();
         }

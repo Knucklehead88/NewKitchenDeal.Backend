@@ -3,6 +3,7 @@ using System;
 using Infrastructure.Data.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Identity.Migrations
 {
     [DbContext(typeof(AppIdentityDbContext))]
-    partial class AppIdentityDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240203231302_AddStripeCustomerId")]
+    partial class AddStripeCustomerId
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,29 +24,6 @@ namespace Infrastructure.Identity.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
-
-            modelBuilder.Entity("Core.Entities.BusinessInfoLocation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("BusinessInfoId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BusinessInfoId");
-
-                    b.HasIndex("LocationId");
-
-                    b.ToTable("BusinessInfoLocation");
-                });
 
             modelBuilder.Entity("Core.Entities.Identity.Address", b =>
                 {
@@ -133,9 +113,6 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
-                    b.Property<string>("SubscriptionId")
-                        .HasColumnType("text");
-
                     b.Property<bool>("TwoFactorEnabled")
                         .HasColumnType("boolean");
 
@@ -151,8 +128,6 @@ namespace Infrastructure.Identity.Migrations
                     b.HasIndex("NormalizedUserName")
                         .IsUnique()
                         .HasDatabaseName("UserNameIndex");
-
-                    b.HasIndex("SubscriptionId");
 
                     b.ToTable("AspNetUsers", (string)null);
                 });
@@ -183,14 +158,14 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<string>("Projects")
                         .HasColumnType("text");
 
-                    b.Property<long>("StartDateOfWork")
-                        .HasColumnType("bigint");
-
                     b.Property<string>("VideoPresentation")
                         .HasColumnType("text");
 
                     b.Property<string>("Website")
                         .HasColumnType("text");
+
+                    b.Property<int>("YearsOfExperience")
+                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 
@@ -270,8 +245,8 @@ namespace Infrastructure.Identity.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int[]>("Bbox")
-                        .HasColumnType("integer[]");
+                    b.Property<int?>("BusinessInfoId")
+                        .HasColumnType("integer");
 
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision");
@@ -279,13 +254,12 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<double>("Longitude")
                         .HasColumnType("double precision");
 
-                    b.Property<string>("MapBoxId")
-                        .HasColumnType("text");
-
                     b.Property<string>("Name")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("BusinessInfoId");
 
                     b.ToTable("Location");
                 });
@@ -301,9 +275,6 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<string>("AppUserId")
                         .HasColumnType("text");
 
-                    b.Property<bool>("CanReceiveTextMessages")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("FacebookProfile")
                         .HasColumnType("text");
 
@@ -312,6 +283,9 @@ namespace Infrastructure.Identity.Migrations
 
                     b.Property<string>("LastName")
                         .HasColumnType("text");
+
+                    b.Property<int?>("LocationId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("text");
@@ -333,55 +307,9 @@ namespace Infrastructure.Identity.Migrations
                     b.HasIndex("AppUserId")
                         .IsUnique();
 
-                    b.ToTable("PersonalInfo", (string)null);
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.PersonalInfoLocation", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("LocationId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("PersonalInfoId")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
                     b.HasIndex("LocationId");
 
-                    b.HasIndex("PersonalInfoId");
-
-                    b.ToTable("PersonalInfoLocation");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.Subscription", b =>
-                {
-                    b.Property<string>("Id")
-                        .HasColumnType("text");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PlanType")
-                        .HasColumnType("text");
-
-                    b.Property<decimal?>("Price")
-                        .HasColumnType("numeric");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Subscription");
+                    b.ToTable("PersonalInfo", (string)null);
                 });
 
             modelBuilder.Entity("Core.Entities.Identity.Trade", b =>
@@ -532,25 +460,6 @@ namespace Infrastructure.Identity.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("Core.Entities.BusinessInfoLocation", b =>
-                {
-                    b.HasOne("Core.Entities.Identity.BusinessInfo", "BusinessInfo")
-                        .WithMany("Locations")
-                        .HasForeignKey("BusinessInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Core.Entities.Identity.Location", "Location")
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("BusinessInfo");
-
-                    b.Navigation("Location");
-                });
-
             modelBuilder.Entity("Core.Entities.Identity.Address", b =>
                 {
                     b.HasOne("Core.Entities.Identity.AppUser", "AppUser")
@@ -558,15 +467,6 @@ namespace Infrastructure.Identity.Migrations
                         .HasForeignKey("Core.Entities.Identity.Address", "AppUserId");
 
                     b.Navigation("AppUser");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.AppUser", b =>
-                {
-                    b.HasOne("Core.Entities.Identity.Subscription", "Subscription")
-                        .WithMany()
-                        .HasForeignKey("SubscriptionId");
-
-                    b.Navigation("Subscription");
                 });
 
             modelBuilder.Entity("Core.Entities.Identity.BusinessInfo", b =>
@@ -616,32 +516,26 @@ namespace Infrastructure.Identity.Migrations
                     b.Navigation("Trade");
                 });
 
+            modelBuilder.Entity("Core.Entities.Identity.Location", b =>
+                {
+                    b.HasOne("Core.Entities.Identity.BusinessInfo", null)
+                        .WithMany("Locations")
+                        .HasForeignKey("BusinessInfoId");
+                });
+
             modelBuilder.Entity("Core.Entities.Identity.PersonalInfo", b =>
                 {
                     b.HasOne("Core.Entities.Identity.AppUser", "AppUser")
                         .WithOne("PersonalInfo")
                         .HasForeignKey("Core.Entities.Identity.PersonalInfo", "AppUserId");
 
-                    b.Navigation("AppUser");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.PersonalInfoLocation", b =>
-                {
                     b.HasOne("Core.Entities.Identity.Location", "Location")
                         .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("LocationId");
 
-                    b.HasOne("Core.Entities.Identity.PersonalInfo", "PersonalInfo")
-                        .WithMany("Locations")
-                        .HasForeignKey("PersonalInfoId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                    b.Navigation("AppUser");
 
                     b.Navigation("Location");
-
-                    b.Navigation("PersonalInfo");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -711,11 +605,6 @@ namespace Infrastructure.Identity.Migrations
                     b.Navigation("SpokenLanguages");
 
                     b.Navigation("Trades");
-                });
-
-            modelBuilder.Entity("Core.Entities.Identity.PersonalInfo", b =>
-                {
-                    b.Navigation("Locations");
                 });
 #pragma warning restore 612, 618
         }

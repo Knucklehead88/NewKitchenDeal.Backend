@@ -1,6 +1,9 @@
 using System.Text;
 using Core.Entities.Identity;
 using Infrastructure.Data.Identity;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.Facebook;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +19,8 @@ namespace API.Extensions
         {
             services.AddDbContext<AppIdentityDbContext>(opt =>
             {
-                // opt.UseNpgsql(config.GetConnectionString("IdentityConnection"));
-                var env = Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING");
-                if (string.IsNullOrEmpty(env)) {
-                    Environment.SetEnvironmentVariable("IDENTITY_CONNECTION_STRING", "host=db;port=5432;username=appuser;password=secret;database=identity");
-                }
-                opt.UseNpgsql(Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING"));
+                opt.UseNpgsql(config.GetConnectionString("IdentityConnection"));
+                //opt.UseNpgsql(Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING"));
 
             });
 
@@ -33,11 +32,26 @@ namespace API.Extensions
             .AddSignInManager<SignInManager<AppUser>>()
             .AddDefaultTokenProviders();
 
+            services.Configure<IdentityOptions>(options =>
+            {
+                // Default Password settings.
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireNonAlphanumeric = true;
+                options.Password.RequireUppercase = true;
+                options.Password.RequiredLength = 6;
+                //options.Password.RequiredUniqueChars = 1;
+            });
+
             services.Configure<DataProtectionTokenProviderOptions>(opt =>
                 opt.TokenLifespan = TimeSpan.FromHours(2));
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-                .AddJwtBearer(options =>
+            services.AddAuthentication(o => {
+                o.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+                o.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                o.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+            })
+                .AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
@@ -48,12 +62,19 @@ namespace API.Extensions
                         ValidateAudience = false
                     };
                 })
-                .AddGoogle("google", googleOptions =>
+                .AddGoogle(GoogleDefaults.AuthenticationScheme, googleOptions =>
                 {
                     var googleAuth = config.GetSection("Authentication:Google");
                     googleOptions.ClientId = googleAuth["ClientId"];
                     googleOptions.ClientSecret = googleAuth["ClientSecret"];
                     googleOptions.SignInScheme = IdentityConstants.ExternalScheme;
+                    googleOptions.SaveTokens = true;
+                })
+                .AddFacebook(FacebookDefaults.AuthenticationScheme, facebookOptions =>
+                {
+                    var facebookAuth = config.GetSection("Authentication:Facebook");
+                    facebookOptions.ClientId = facebookAuth["ClientId"];
+                    facebookOptions.ClientSecret = facebookAuth["ClientSecret"];
                 });
 
 
