@@ -14,11 +14,13 @@ namespace Infrastructure.Services
 {
     public  class EmailService: IEmailService
     {
-        private readonly IConfiguration _config;
+        private readonly MyAwsCredentials _credentials;
 
-        public EmailService(IConfiguration config)
+        // private readonly IConfiguration _config;
+
+        public EmailService(MyAwsCredentials credentials)
         {
-            _config = config;
+            _credentials = credentials;
         }
 
         public async Task SendEmailAsync(string email, string subject, string messageBody)
@@ -31,7 +33,7 @@ namespace Infrastructure.Services
 
             using var client = new SmtpClient();
             await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(_config["Email:Address"], _config["Email:Passcode"]);
+            await client.AuthenticateAsync(_credentials.EmailAddress, _credentials.EmailPasscode);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }
@@ -46,7 +48,7 @@ namespace Infrastructure.Services
 
             using var client = new SmtpClient();
             await client.ConnectAsync("smtp.gmail.com", 587, SecureSocketOptions.StartTls);
-            await client.AuthenticateAsync(_config["Email:Address"], _config["Email:Passcode"]);
+            await client.AuthenticateAsync(_credentials.EmailAddress, _credentials.EmailPasscode);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
         }

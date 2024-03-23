@@ -1,5 +1,7 @@
 using System.Text;
+using Core.Entities;
 using Core.Entities.Identity;
+using Google.Apis.Util;
 using Infrastructure.Data.Identity;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Facebook;
@@ -7,7 +9,9 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using Stripe;
 
 namespace API.Extensions
@@ -19,7 +23,9 @@ namespace API.Extensions
         {
             services.AddDbContext<AppIdentityDbContext>(opt =>
             {
-                opt.UseNpgsql(config.GetConnectionString("IdentityConnection"));
+                //opt.UseNpgsql(config.Get<MyAwsCredentials>().IdentityConnection);
+
+                opt.UseNpgsql(config.GetConnectionString("IdentityConnection"), x => x.UseNetTopologySuite());
                 //opt.UseNpgsql(Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING"));
 
             });

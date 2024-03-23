@@ -5,11 +5,10 @@ namespace API.Dtos
 {
     public class BusinessInfoDto
     {
-        [Required]
         public string BusinessName { get; set; }
         public List<TradeDto> Trades { get; set; }
-        public string HourlyRate { get; set; }
-        public string DailyRate { get; set; }
+        public decimal HourlyRate { get; set; }
+        public decimal DailyRate { get; set; }
         public string Website { get; set; }
         public string Description { get; set; }
         public string VideoPresentation { get; set; }

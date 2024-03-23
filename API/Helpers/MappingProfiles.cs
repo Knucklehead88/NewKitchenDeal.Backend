@@ -29,15 +29,19 @@ namespace API.Helpers
 
             CreateMap<PersonalInfo, PersonalInfoDto>()
                 .ForMember(a => a.Locations, opt => opt.Ignore());
+                //.ForMember(a => a.ProfilePictureImage, opt => opt.Ignore());
+
 
             CreateMap<PersonalInfoDto, PersonalInfo>()
                 .ForMember(a => a.Locations, opt => opt.Ignore());
 
+            CreateMap<PersonalInfo, ResponsePersonalInfoDto>()
+                .ForMember(a => a.Locations, opt => opt.Ignore());
+
+            CreateMap<ResponsePersonalInfoDto, PersonalInfo>()
+                .ForMember(a => a.Locations, opt => opt.Ignore());
+
             CreateMap<LocationDto, Location>()
-                .ForMember(a => a.PersonalInfo, opt => opt.Ignore())
-                //.ForMember(a => a.PersonalInfoId, opt => opt.Ignore())
-                .ForMember(a => a.BusinessInfo, opt => opt.Ignore())
-                //.ForMember(a => a.BusinessInfoId, opt => opt.Ignore())
                 .ForMember(a => a.Id, opt => opt.Ignore())
                 .ReverseMap();
 
@@ -48,11 +52,19 @@ namespace API.Helpers
                 .ForMember(a => a.Locations, opt => opt.Ignore())
                 .ReverseMap();
 
+            //CreateMap<BusinessInfo, BusinessInfoDto>()
+            //    .ForMember(a => a.VideoPresentationFile, opt => opt.Ignore());
+
+            CreateMap<BusinessInfo, ResponseBusinessInfoTradesDto>()
+                .ForMember(a => a.Trades, opt => opt.Ignore());
+
             CreateMap<BusinessInfo, ResponseBusinessInfoDto>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
                 .ForMember(a => a.SpokenLanguages, opt => opt.Ignore())
                 .ForMember(a => a.Locations, opt => opt.Ignore());
 
+
+            //.ForMember(a => a.VideoPresentation, opt => opt.Ignore());
 
             CreateMap<ResponseBusinessInfoDto, BusinessInfo>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
@@ -64,8 +76,54 @@ namespace API.Helpers
                 .ReverseMap();
             CreateMap<Language, LanguageDto>().ReverseMap();
             CreateMap<Language, ResponseLanguageDto>().ReverseMap();
+
+            
+            CreateMap<Stripe.Product, StripeProductDto>().ReverseMap();
+            CreateMap<Stripe.Price, StripePriceDto>()
+                .ForMember(d => d.ProductId, o => o.MapFrom(s => s.ProductId))
+                .ForMember(d => d.Interval, o => o.MapFrom(s => s.Recurring.Interval))
+                .ForMember(d => d.UnitAmount, o => o.MapFrom(s => s.UnitAmount))
                 .ReverseMap();
-            CreateMap<Trade, TradeDto>().ReverseMap();
+            CreateMap<Stripe.Customer, StripeCustomerDto>()
+                .ForMember(d => d.Phone, o => o.MapFrom(s => s.Phone))
+                .ReverseMap();
+
+            CreateMap<CreatePaymentMethod, CreatePaymentMethodDto>().ReverseMap();
+            CreateMap<Stripe.PaymentMethod, PaymentMethodDto>()
+                .ForMember(d => d.Last4, o => o.MapFrom(s => s.Card.Last4))
+                .ForMember(d => d.ExpMonth, o => o.MapFrom(s => s.Card.ExpMonth))
+                .ForMember(d => d.ExpYear, o => o.MapFrom(s => s.Card.ExpYear))
+                .ForMember(d => d.Brand, o => o.MapFrom(s => s.Card.Brand))
+                .ForMember(d => d.Name, o => o.MapFrom(s => s.BillingDetails.Name))
+                .ForMember(d => d.Phone, o => o.MapFrom(s => s.BillingDetails.Phone))
+                .ForMember(d => d.Email, o => o.MapFrom(s => s.BillingDetails.Email))
+                .ReverseMap();
+            CreateMap<SetupIntentDto, Stripe.SetupIntent>()
+                .ReverseMap();
+
+            CreateMap<Card, CardDto>().ReverseMap();
+            CreateMap<Stripe.Card, CardDto>()
+                .ReverseMap();
+
+            CreateMap<Stripe.Subscription, PostSubscriptionDto>()
+                .ForMember(d => d.CustomerId, o => o.MapFrom(s => s.CustomerId))
+                .ForMember(d => d.Status, o => o.MapFrom(s => s.Status))
+                .ForMember(d => d.StartDate, o => o.MapFrom(s => s.StartDate))
+                .ForMember(d => d.PriceId, o => o.MapFrom(s => s.Items.Data[0].Price.Id))
+                .ForMember(d => d.ProductId, o => o.MapFrom(s => s.Items.Data[0].Price.ProductId))
+                .ForMember(d => d.UnitAmount, o => o.MapFrom(s => s.Items.Data[0].Price.UnitAmountDecimal))
+                .ReverseMap();
+
+            CreateMap<Stripe.Subscription, SubscriptionDto>()
+                .ReverseMap();
+
+            CreateMap<Subscription, SubscriptionDto>()
+                .ReverseMap();
+
+            CreateMap<Stripe.Invoice, StripeInvoiceDto>()
+                .ForMember(d => d.PriceId, o => o.MapFrom(s => s.Subscription.Items.FirstOrDefault().Price.Id))
+                .ForMember(d => d.UnitAmount, o => o.MapFrom(s => s.Subscription.Items.FirstOrDefault().Price.UnitAmountDecimal))
+                .ReverseMap();
 
             CreateMap<SendToEmail, SendToEmailDto>()
                 .ReverseMap();

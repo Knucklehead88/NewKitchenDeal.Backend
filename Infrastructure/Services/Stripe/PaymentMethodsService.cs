@@ -12,11 +12,11 @@ namespace Infrastructure.Services.Stripe
 {
     public class PaymentMethodsService : IPaymentMethodsService
     {
-        private readonly IConfiguration _config;
-        public PaymentMethodsService(IConfiguration config)
+        // private readonly IConfiguration _config;
+        public PaymentMethodsService(MyAwsCredentials credentials)
         {
-            _config = config;
-            StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
+            // StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
+            StripeConfiguration.ApiKey = credentials.SecretKey;
         }
 
         public async Task<SetupIntent> CreateSetupIntent(string customerId, string paymentMethodId, string returnUrl = "")

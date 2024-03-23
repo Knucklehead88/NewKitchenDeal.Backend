@@ -9,6 +9,9 @@ using Infrastructure.Data.Identity;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using System.IO;
+using System.Net;
 
 namespace API.Controllers
 {
@@ -19,8 +22,9 @@ namespace API.Controllers
         private readonly IMapper _mapper;
         private readonly ICrudService<Location> _locationService;
 
-        public PersonalInfoController(UserManager<AppUser> userManager, 
-            IMapper mapper, ICrudService<Location> locationService)
+        public PersonalInfoController(UserManager<AppUser> userManager,
+            IMapper mapper,
+            ICrudService<Location> locationService)
         {
             _mapper = mapper;
             _locationService = locationService;
@@ -28,22 +32,26 @@ namespace API.Controllers
         }
 
         [HttpPost]
-        public async Task<ActionResult<PersonalInfoDto>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto)
+        public async Task<ActionResult<ResponsePersonalInfoDto>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto)
         {
             var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
+            
             if (user == null)
             {
                 return NotFound(new ApiResponse(404));
             }
 
-            var personalInfoLocations = personalInfoDto.Locations.Select(l => new PersonalInfoLocation()
-            {
-                Location = _mapper.Map<Location>(l),
-                PersonalInfo = user.PersonalInfo
-            }).ToList();
-
             user.PersonalInfo = _mapper.Map<PersonalInfoDto, PersonalInfo>(personalInfoDto);
-            user.PersonalInfo.Locations = personalInfoLocations;
+
+            if (personalInfoDto?.Locations != null)
+            {
+                var personalInfoLocations = personalInfoDto.Locations.Select(l => new PersonalInfoLocation()
+                {
+                    Location = _mapper.Map<Location>(l),
+                    PersonalInfo = user.PersonalInfo
+                }).ToList();
+                user.PersonalInfo.Locations = personalInfoLocations;
+            }
 
             var result = await _userManager.UpdateAsync(user);
 
@@ -60,19 +68,19 @@ namespace API.Controllers
 
 
         [HttpGet]
-        public async Task<ActionResult<PersonalInfoDto>> GetUserPerfonalInfo()
+        public async Task<ActionResult<ResponsePersonalInfoDto>> GetUserPerfonalInfo()
         {
             var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
 
-            if (user.PersonalInfo == null)
+            if (user?.PersonalInfo == null)
             {
                 return NotFound(new ApiResponse(404));
             }
-            var personalInfoDto = _mapper.Map<PersonalInfo, PersonalInfoDto>(user.PersonalInfo);
+            var personalInfoDto = _mapper.Map<PersonalInfo, ResponsePersonalInfoDto>(user.PersonalInfo);
 
             var locations = await _locationService.ListAllAsync();
-            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(locations.Where(l => user.PersonalInfo.Locations.Any(lo => lo.LocationId == l.Id)).ToList());
-            
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(locations.Where(l => user.PersonalInfo.Locations.Count(lo => lo.LocationId == l.Id) > 0).ToList());
+
             if (locationsDto.Count != 0)
             {
                 personalInfoDto.Locations = locationsDto;
@@ -81,7 +89,5 @@ namespace API.Controllers
             return personalInfoDto;
 
         }
-
-
     }
 }

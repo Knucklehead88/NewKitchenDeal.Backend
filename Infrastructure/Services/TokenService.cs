@@ -14,13 +14,16 @@ namespace Infrastructure.Services
     {
         private readonly IConfiguration _config;
         private readonly SymmetricSecurityKey _key;
-        private readonly IConfigurationSection _googleSettings;
+        //private readonly IConfigurationSection _googleSettings;
+        private readonly MyAwsCredentials _credentials;
 
-        public TokenService(IConfiguration config)
+
+        public TokenService(MyAwsCredentials credentials)
         {
-            _config = config;
-            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Token:Key"]));
-            _googleSettings = _config.GetSection("Authentication:Google");
+            _credentials = credentials;
+            //_key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Token:Key"]));
+            _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(credentials.TokenKey));
+            //_googleSettings = _config.GetSection("Authentication:Google");
         }
 
         public string CreateToken(AppUser user)
@@ -38,7 +41,8 @@ namespace Infrastructure.Services
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.Now.AddDays(7),
                 SigningCredentials = creds,
-                Issuer = _config["Token:Issuer"]
+                Issuer = _credentials.TokenIssuer
+                //Issuer = _config["Token:Issuer"]
             };
 
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -54,7 +58,7 @@ namespace Infrastructure.Services
             {
                 var settings = new GoogleJsonWebSignature.ValidationSettings()
                 {
-                    Audience = new List<string>() { _googleSettings.GetSection("ClientId").Value }
+                    Audience = [_credentials.GoogleClientId]
                 };
                 var payload = await GoogleJsonWebSignature.ValidateAsync(externalAuth.IdToken, settings);
                 return payload;
@@ -65,6 +69,26 @@ namespace Infrastructure.Services
                 return null;
             }
         }
+
+        public async Task<GoogleJsonWebSignature.Payload> VerifyFacebookToken(ExternalAuth externalAuth)
+        {
+            try
+            {
+                var settings = new GoogleJsonWebSignature.ValidationSettings()
+                {
+                    Audience = [_credentials.GoogleClientId]
+                };
+                var payload = await GoogleJsonWebSignature.ValidateAsync(externalAuth.IdToken, settings);
+                return payload;
+            }
+            catch (Exception ex)
+            {
+                //log an exception
+                return null;
+            }
+        }
+
+
 
     }
 }

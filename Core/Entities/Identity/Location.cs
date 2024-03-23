@@ -7,7 +7,7 @@ namespace Core.Entities.Identity
         public string Name { get; set; }
         public double Longitude { get; set; }
         public double Latitude { get; set; }
-        public int[] Bbox { get; set; } = new int[4];
+        public float[] Bbox { get; set; } = new float[4];
         public string MapBoxId { get; set; }
     }
 }

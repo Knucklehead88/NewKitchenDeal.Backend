@@ -10,9 +10,12 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Stripe;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Net;
+using System.Net.Mail;
 
 namespace API.Controllers
 {
@@ -23,21 +26,50 @@ namespace API.Controllers
         private readonly ICrudService<Trade> _tradeService;
         private readonly ICrudService<Language> _languageService;
         private readonly ICrudService<Location> _locationService;
-
+        private readonly IMediaUploadService _mediaUploadService;
         private readonly IMapper _mapper;
-
+        private readonly MyAwsCredentials _credentials;
 
         public BusinessInfoController(UserManager<AppUser> userManager,
             ICrudService<Trade> tradeService,
             ICrudService<Language> languageService,
             ICrudService<Location> locationService,
-            IMapper mapper)
+            IMediaUploadService mediaUploadService,
+            IMapper mapper,
+            MyAwsCredentials credentials)
         {
             _mapper = mapper;
+            _credentials = credentials;
             _userManager = userManager;
             _tradeService = tradeService;
             _languageService = languageService;
             _locationService = locationService;
+            _mediaUploadService = mediaUploadService;
+        }
+
+        [HttpPost("videopresentation")]
+        public async Task<IActionResult> AddVideoPresentation(IFormFile videoPresentationFile)
+        {
+            if (videoPresentationFile == null)
+            {
+                return BadRequest(new ApiResponse(400));
+            }
+
+            if (!FileValidator.IsFileExtensionAllowed(videoPresentationFile, [".mp4",".m4p", ".m4v", ".mpg", ".mp2", ".mpeg",
+                ".mpe", ".mpv",".wmv", ".avi", ".gif", ".flv", ".mkv", ".mov"]))
+                return BadRequest(new ApiResponse(400, "Invalid file type. Please upload a MP4, MOV, AVI, GIF, WMV, FLV or MPEG file."));
+
+            if (!FileValidator.IsFileSizeWithinLimit(videoPresentationFile, 25 * 1024 * 1024))
+                return BadRequest(new ApiResponse(400, "File size exceeds the maximum allowed size (25 MB)."));
+
+            var key = $"video_presentation/{Guid.NewGuid()}";
+            var response = await _mediaUploadService.UploadFileAsync(key, videoPresentationFile);
+            if (response.HttpStatusCode != HttpStatusCode.OK)
+            {
+                return BadRequest(new ApiResponse(400, "Video could not be uploaded."));
+            }
+
+            return Ok($"{_credentials.S3Url}/{key}");
         }
 
         [HttpPost]
@@ -78,11 +110,12 @@ namespace API.Controllers
                 BusinessInfo = businessInfo
             }));
 
-            var businessInfoLocations = businessInfoDto.Locations.Select(l => new BusinessInfoLocation()
-            {
-                Location = _mapper.Map<Location>(l),
-                BusinessInfo = businessInfo
-            }).ToList();
+            var businessInfoLocations = businessInfoDto.Locations.Select(l => new 
+                BusinessInfoLocation()
+                {
+                    Location = _mapper.Map<Location>(l),
+                    BusinessInfo = businessInfo
+                }).ToList();
             businessInfo.Locations = businessInfoLocations;
 
             user.BusinessInfo = businessInfo;
@@ -102,13 +135,12 @@ namespace API.Controllers
 
         }
 
-
         [HttpGet]
         public async Task<ActionResult<ResponseBusinessInfoDto>> GetUserBusinessInfo()
         {
             var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
 
-            if (user.BusinessInfo == null)
+            if (user?.BusinessInfo == null)
             {
                 return NotFound(new ApiResponse(404));
             }
@@ -142,6 +174,28 @@ namespace API.Controllers
             return businessInfoDto;
         }
 
+        [HttpDelete("videopresentation")]
+        public async Task<IActionResult> DeleteUserBusinessInfoVideoPresentation()
+        {
+            var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
 
+            if (user.BusinessInfo == null)
+            {
+                return NotFound(new ApiResponse(404));
+            }
+
+            if (string.IsNullOrEmpty(user.BusinessInfo.VideoPresentation))
+            {
+                return NotFound(new ApiResponse(404));
+            }
+
+            var response = await _mediaUploadService.DeleteFileAsync(user.BusinessInfo.VideoPresentation);
+            return response.HttpStatusCode switch
+            {
+                HttpStatusCode.NoContent => Ok(),
+                HttpStatusCode.NotFound => NotFound(new ApiResponse(404)),
+                _ => BadRequest(new ApiResponse(400))
+            };
+        }
     }
 }

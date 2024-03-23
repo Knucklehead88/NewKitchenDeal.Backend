@@ -16,8 +16,14 @@ using System.Text;
 using Google.Apis.Auth;
 using Core.Entities;
 using Microsoft.AspNetCore.WebUtilities;
-using Microsoft.AspNetCore.Identity.UI.V4.Pages.Account.Internal;
 using Core.Interfaces.Stripe;
+using Stripe;
+using Address = Core.Entities.Identity.Address;
+using Infrastructure.Services;
+using System.Net;
+using API.Helpers;
+using Core.Specifications;
+using Infrastructure.Data;
 
 namespace API.Controllers
 {
@@ -29,9 +35,26 @@ namespace API.Controllers
         private readonly IMapper _mapper;
         private readonly IEmailService _emailService;
         private readonly ICustomersService _customerService;
+        private readonly ICrudService<Trade> _tradeService;
+        private readonly ICrudService<Location> _locationService;
+        private readonly ICrudService<Language> _languageService;
+        private readonly IMediaUploadService _mediaUploadService;
+        private readonly MyAwsCredentials _credentials;
+        private readonly IReadOnlyList<Language> _languageList;
+        private readonly IReadOnlyList<Trade> _tradeList;
+        private readonly IReadOnlyList<Location> _locationList;
+
 
         public AccountController(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
-            ITokenService tokenService, IMapper mapper, IEmailService emailService, ICustomersService customerService)
+            ITokenService tokenService, 
+            IMapper mapper, 
+            IEmailService emailService, 
+            ICustomersService customerService, 
+            ICrudService<Trade> tradeService,
+            ICrudService<Language> languageService,
+            ICrudService<Location> locationService,
+            IMediaUploadService mediaUploadService,
+            MyAwsCredentials credentials)
         {
             _mapper = mapper;
             _emailService = emailService;
@@ -39,29 +62,51 @@ namespace API.Controllers
             _tokenService = tokenService;
             _signInManager = signInManager;
             _userManager = userManager;
+            _tradeService = tradeService;
+            _languageService = languageService;
+            _locationService = locationService;
+            _mediaUploadService = mediaUploadService;
+            _credentials = credentials;
         }
 
         [Authorize]
         [HttpGet]
         public async Task<ActionResult<UserDto>> GetCurrentUser()
         {
-            var user = await _userManager.FindByEmailFromClaimsPrincipal(User);
+            var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
+            if (user == null) return Unauthorized(new ApiResponse(401));
 
-            return new UserDto
+            var userDto =  new UserBiDto
             {
                 Email = user.Email,
                 EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
                 DisplayName = user.DisplayName,
-                Subscription = user.Subscription,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId
             };
+
+            if (user?.BusinessInfo != null)
+            {
+                var trades = await _tradeService.ListAllAsync();
+                var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
+                var businessInfoDto = _mapper.Map<ResponseBusinessInfoTradesDto>(user.BusinessInfo);
+
+                if (tradesDto.Count != 0)
+                {
+                    businessInfoDto.Trades = tradesDto;
+                }
+                userDto.BusinessInfo = businessInfoDto;
+            }
+
+            return userDto;
         }
 
         [HttpPost("login")]
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
-            var user = await _userManager.FindByEmailAsync(loginDto.Email);
+            var user = await _userManager.FindByEmailWithSubscription(loginDto.Email);
 
             if (user == null) return Unauthorized(new ApiResponse(401));
 
@@ -81,24 +126,31 @@ namespace API.Controllers
                 EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
                 DisplayName = user.DisplayName,
-                Subscription = user.Subscription,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId
             };
         }
 
+
         [Authorize]
-        [HttpGet("getallusers")]
-        public ActionResult<IList<UserDto>> GetAllUsers()
+        [HttpGet("getcontractors")]
+        public async Task<ActionResult<Pagination<UserDto>>> GetUsers([FromQuery] UserSpecParams userParams)
         {
-            return _userManager.Users.Select((user) => new UserDto
+            var users = await _userManager.FindByUserParams(userParams);
+
+            var userDtos = users.Select((user) => new UserDto
             {
                 Email = user.Email,
                 EmailConfirmed = user.EmailConfirmed,
                 Token = _tokenService.CreateToken(user),
                 DisplayName = user.DisplayName,
-                Subscription = user.Subscription,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId
-            }).ToList();
+            }).ToList().AsReadOnly();
+            return Ok(new Pagination<UserDto>(userParams.PageIndex, userParams.PageSize, userDtos.Count, userDtos));
+
         }
 
         [HttpPost("register")]
@@ -110,6 +162,10 @@ namespace API.Controllers
                     { Errors = ["Email address is in use"] });
             }
             var customer = await _customerService.CreateCustomerAsync(registerDto.DisplayName, registerDto.Email);
+            if (customer == null)
+            {
+                return BadRequest(new ApiResponse(400, "Invalid External Authentication."));
+            }
 
             var user = new AppUser
             {
@@ -139,9 +195,11 @@ namespace API.Controllers
             return new UserDto
             {
                 DisplayName = user.DisplayName,
+                Email = user.Email,
                 Token = _tokenService.CreateToken(user),
                 EmailConfirmed = user.EmailConfirmed,
-                Email = user.Email,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                //Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId,
             };
         }
@@ -191,10 +249,15 @@ namespace API.Controllers
             var user = await _userManager.FindByLoginAsync(info.LoginProvider, info.ProviderKey);
             if (user == null)
             {
-                user = await _userManager.FindByEmailAsync(payload.Email);
+                user = await _userManager.FindByEmailWithSubscription(payload.Email);
                 if (user == null)
                 {
-                    user = new AppUser { Email = payload.Email, UserName = payload.Email, DisplayName = payload.GivenName };
+                    var customer = await _customerService.CreateCustomerAsync(user.DisplayName, user.Email);
+                    if(customer == null)
+                    {
+                        return BadRequest(new ApiResponse(400, "We could not create a stripe customer."));
+                    }
+                    user = new AppUser { Email = payload.Email, UserName = payload.Email, DisplayName = payload.GivenName, CustomerId = customer.Id };
                     await _userManager.CreateAsync(user);
                     //prepare and send an email for the email confirmation
                     //await _userManager.AddToRoleAsync(user, "Viewer");
@@ -208,12 +271,14 @@ namespace API.Controllers
             if (user == null)
                 return BadRequest(new ApiResponse(400, "Invalid External Authentication."));
             //check for the Locked out account
-            var customer = await _customerService.CreateCustomerAsync(user.DisplayName, user.Email);
             return new UserDto
             {
                 DisplayName = user.DisplayName,
+                Email = user.Email,
                 Token = _tokenService.CreateToken(user),
-                Email = user.Email
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
+                CustomerId = user.CustomerId
             };
         }
 
@@ -340,6 +405,65 @@ namespace API.Controllers
 
             await _emailService.GetInTouchAsync(sendToEmail);
             return Ok();
+        }
+
+        [HttpPost("profilepicture")]
+        public async Task<ActionResult<string>> AddProfilePicture(IFormFile profilePicture)
+        {
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
+
+            if (user == null)
+            {
+                return NotFound(new ApiResponse(404));
+            }
+
+            if (!FileValidator.IsFileExtensionAllowed(profilePicture, [".jpeg", ".jpg", ".png", ".gif", ".bmp", ".tiff", ".svg"]))
+                return BadRequest(new ApiResponse(400, "Invalid file type. Please upload a JPEG, JPG, PNG, GIF or BMP file."));
+
+            if (!FileValidator.IsFileSizeWithinLimit(profilePicture, 5 * 1024 * 1024))
+                return BadRequest(new ApiResponse(400, "File size exceeds the maximum allowed size (5 MB)."));
+
+            var key = $"profile_picture/{Guid.NewGuid()}";
+            var response = await _mediaUploadService.UploadFileAsync(key, profilePicture);
+
+            if (response.HttpStatusCode != HttpStatusCode.OK)
+            {
+                return BadRequest(new ApiResponse(400, "Image could not be uploaded."));
+            }
+
+            var profilePictureUrl = $"{_credentials.S3Url}/{key}";
+            user.ProfilePictureUrl = profilePictureUrl;
+            var result = await _userManager.UpdateAsync(user);
+
+            if (!result.Succeeded)
+            {
+                return BadRequest(new ApiResponse(400, "Problem updating the user's profile picture."));
+            }
+            return Ok(profilePictureUrl);
+        }
+
+        [HttpDelete("profilepicture")]
+        public async Task<IActionResult> DeleteUserPerfonalInfoProfilePicture()
+        {
+            var user = await _userManager.FindByEmailFromClaimsPrincipal(User);
+
+            if (user == null)
+            {
+                return NotFound(new ApiResponse(404));
+            }
+
+            if (string.IsNullOrEmpty(user.ProfilePictureUrl))
+            {
+                return NotFound(new ApiResponse(404, "The user does not have a profile picture"));
+            }
+
+            var response = await _mediaUploadService.DeleteFileAsync(user.ProfilePictureUrl);
+            return response.HttpStatusCode switch
+            {
+                HttpStatusCode.NoContent => Ok(),
+                HttpStatusCode.NotFound => NotFound(new ApiResponse(404, "The user does not have a profile picture")),
+                _ => BadRequest(new ApiResponse(400))
+            };
         }
 
     }

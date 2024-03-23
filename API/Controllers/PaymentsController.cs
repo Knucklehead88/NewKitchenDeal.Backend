@@ -4,6 +4,7 @@ using Core.Entities.OrderAggregate;
 using Core.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Stripe;
 
 namespace API.Controllers
@@ -13,12 +14,15 @@ namespace API.Controllers
         private readonly string _whSecret;
         private readonly IPaymentService _paymentService;
         private readonly ILogger<PaymentsController> _logger;
+        private readonly IOptions<MyAwsCredentials> _options;
+
         public PaymentsController(IPaymentService paymentService, ILogger<PaymentsController> logger, 
-            IConfiguration config)
+            IOptions<MyAwsCredentials> options)
         {
             _logger = logger;
+            _options = options;
             _paymentService = paymentService;
-            _whSecret = config.GetSection("StripeSettings:WhSecret").Value;
+            _whSecret = options.Value.WhSecret;
         }
 
         [Authorize]

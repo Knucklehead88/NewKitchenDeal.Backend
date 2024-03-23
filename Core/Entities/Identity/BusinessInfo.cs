@@ -10,8 +10,8 @@ namespace Core.Entities.Identity
         public int Id { get; set; }
         public string BusinessName { get; set; }
         public List<BusinessInfoTrade> Trades { get; set; } = [];
-        public string HourlyRate { get; set; }
-        public string DailyRate { get; set; }
+        public decimal HourlyRate { get; set; }
+        public decimal DailyRate { get; set; }
         public string Website { get; set; }
         public string Description { get; set; }
         public string VideoPresentation { get; set; }

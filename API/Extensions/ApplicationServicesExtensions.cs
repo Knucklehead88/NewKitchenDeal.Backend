@@ -1,10 +1,15 @@
+using Amazon.S3;
 using API.Errors;
+using Core.Entities;
 using Core.Interfaces;
+using Core.Interfaces.Stripe;
 using Infrastructue.Data;
 using Infrastructure.Data;
 using Infrastructure.Services;
+using Infrastructure.Services.Stripe;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using StackExchange.Redis;
 
 namespace API.Extensions
@@ -14,33 +19,40 @@ namespace API.Extensions
         public static IServiceCollection AddApplicationServices(this IServiceCollection services,
             IConfiguration config)
         {
-            services.AddSingleton<IResponseCacheService, ResponseCacheService>();
+            // services.AddSingleton<IResponseCacheService, ResponseCacheService>();
             services.AddDbContext<StoreContext>(opt =>
             {
+                //opt.UseNpgsql(config.Get<MyAwsCredentials>().DefaultConnection);
                 opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
-                // var env = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
-                // if (string.IsNullOrEmpty(env)) {
-                //     Environment.SetEnvironmentVariable("DB_CONNECTION_STRING", "host=db;port=5432;username=appuser;password=secret;database=skinet");
-                // }
-                // opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
+                //opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
 
             });
-            services.AddSingleton<IConnectionMultiplexer>(c => 
-            {
-                var options = ConfigurationOptions.Parse(config.GetConnectionString("Redis")); //localhost
+            //services.AddSingleton<IConnectionMultiplexer>(c => 
+            //{
+                //var options = ConfigurationOptions.Parse(config.GetConnectionString("Redis")); //localhost
                 //var options = ConfigurationOptions.Parse(config.GetConnectionString("localhost"));
-                return ConnectionMultiplexer.Connect(options);
-            });
-            services.AddScoped<IBasketRepository, BasketRepository>();
+                //return ConnectionMultiplexer.Connect(options);
+            //});
+            //services.AddScoped<IBasketRepository, BasketRepository>();
             services.AddScoped<IProductRepository, ProductRepository>();
-            services.AddScoped<IPaymentService, PaymentService>();
+            //services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IProductsService, ProductsService>();
+            services.AddScoped<IPricesService, PricesService>();
+            services.AddScoped<IInvoicesService, InvoicesService>();
+            services.AddScoped<ISubscriptionsService, SubscriptionsService>();
+            services.AddScoped<ICustomersService, CustomersService>();
+            services.AddScoped<IPaymentMethodsService, PaymentMethodsService>();
             services.AddScoped<ITokenService, TokenService>();
             services.AddScoped<IEmailService, EmailService>();
-            services.AddScoped<IOrderService, OrderService>();
+            //services.AddScoped<IOrderService, OrderService>();
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             services.AddScoped(typeof(ICrudService<>), typeof(CrudService<>));
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+            //services.AddDefaultAWSOptions(config.GetAWSOptions());
+            services.AddAWSService<IAmazonS3>();
+            services.AddSingleton<IMediaUploadService, MediaUploadService>();
+
             services.Configure<ApiBehaviorOptions>(options =>
             {
                 options.InvalidModelStateResponseFactory = actionContext =>

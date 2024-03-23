@@ -130,6 +130,9 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("ProfilePictureUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -171,14 +174,14 @@ namespace Infrastructure.Identity.Migrations
                     b.Property<string>("BusinessName")
                         .HasColumnType("text");
 
-                    b.Property<string>("DailyRate")
-                        .HasColumnType("text");
+                    b.Property<decimal>("DailyRate")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Description")
                         .HasColumnType("text");
 
-                    b.Property<string>("HourlyRate")
-                        .HasColumnType("text");
+                    b.Property<decimal>("HourlyRate")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Projects")
                         .HasColumnType("text");
@@ -270,8 +273,8 @@ namespace Infrastructure.Identity.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int[]>("Bbox")
-                        .HasColumnType("integer[]");
+                    b.Property<float[]>("Bbox")
+                        .HasColumnType("real[]");
 
                     b.Property<double>("Latitude")
                         .HasColumnType("double precision");

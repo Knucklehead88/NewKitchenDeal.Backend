@@ -11,7 +11,7 @@ namespace API.Dtos
 
         [Required]
         [MaxLength(4)]
-        public int[] Bbox { get; set; }
+        public float[] Bbox { get; set; }
 
         [Required]
         public string MapBoxId { get; set; }
