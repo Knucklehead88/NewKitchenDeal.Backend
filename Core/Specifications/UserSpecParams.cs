@@ -9,13 +9,15 @@ namespace Core.Specifications
 {
     public class UserSpecParams: BaseSpecParams
     {
-        public decimal DailyRate { get; set; }
-        public decimal HourlyRate { get; set; }
-        public string DailyRateRange { get; set; }
-        public string HourlyRateRange { get; set; }
-        public double? Closes { get; set; }
-        public int? LanguageId { get; set; }
-        public int? TradeId { get; set; }
+        public decimal MinPrice { get; set; }
+        public decimal MaxPrice { get; set; }
+        public bool ByDaily { get; set; }
+        public bool ByHourly { get; set; }
+        public double? Longitude { get; set; }
+        public double? Latitude { get; set; }
+        public List<string> MapBoxIds { get; set; }
+        public List<int?> LanguageIds { get; set; }
+        public List<int?> TradeIds { get; set; }
 
     }
 }

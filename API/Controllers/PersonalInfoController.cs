@@ -20,14 +20,12 @@ namespace API.Controllers
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IMapper _mapper;
-        private readonly ICrudService<Location> _locationService;
 
         public PersonalInfoController(UserManager<AppUser> userManager,
             IMapper mapper,
             ICrudService<Location> locationService)
         {
             _mapper = mapper;
-            _locationService = locationService;
             _userManager = userManager;
         }
 
@@ -78,8 +76,7 @@ namespace API.Controllers
             }
             var personalInfoDto = _mapper.Map<PersonalInfo, ResponsePersonalInfoDto>(user.PersonalInfo);
 
-            var locations = await _locationService.ListAllAsync();
-            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(locations.Where(l => user.PersonalInfo.Locations.Count(lo => lo.LocationId == l.Id) > 0).ToList());
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(user.PersonalInfo.Locations.Select(l => l.Location).ToList());
 
             if (locationsDto.Count != 0)
             {

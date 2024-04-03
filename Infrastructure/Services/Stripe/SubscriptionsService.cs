@@ -20,11 +20,14 @@ namespace Infrastructure.Services.Stripe
         // private readonly IConfiguration _config;
         private readonly UserManager<AppUser> _userManager;
         private readonly IPricesService _pricesService;
+        private readonly ICustomersService _customersService;
 
-        public SubscriptionsService(MyAwsCredentials credentials, UserManager<AppUser> userManager, IPricesService pricesService)
+
+        public SubscriptionsService(MyAwsCredentials credentials, UserManager<AppUser> userManager, IPricesService pricesService, ICustomersService customersService)
         {
             _userManager = userManager;
             _pricesService = pricesService;
+            _customersService = customersService;
             // StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
             StripeConfiguration.ApiKey = credentials.SecretKey;
         }
@@ -134,36 +137,49 @@ namespace Infrastructure.Services.Stripe
 
         public async Task<Subscription> CancelSubscriptionsAsync(string id)
         {
+            var options = new SubscriptionUpdateOptions { CancelAtPeriodEnd = true };
             var service = new SubscriptionService();
-
-            return await service.CancelAsync(id);
+            return await service.UpdateAsync(id, options);
         }
 
-        public async Task<Subscription> ChangeSubscriptionAsync(string paymentMethodId, string subscriptionId, string priceId)
+        public async Task<Subscription> ChangeSubscriptionAsync(string paymentMethodId, string subscriptionId, string subscriptionItemId, string priceId)
         {
             var service = new SubscriptionService();
-            Subscription subscription = await service.GetAsync(subscriptionId);
+            //Subscription subscription = await service.GetAsync(subscriptionId);
 
-            var items = new List<SubscriptionItemOptions>
-            {
-              new() {
-                  Id = subscription.Items.Data[0].Id,
-                  Price = priceId,
-              },
-            };
+            //var items = new List<SubscriptionItemOptions>
+            //{
+            //  new() {
+            //      Id = subscription.Items.Data[0].Id,
+            //      Price = priceId,
+            //  },
+            //};
 
-            var prorationDate = DateTime.Now;
+            //var prorationDate = DateTime.Now;
+            //var options = new SubscriptionUpdateOptions
+            //{
+            //    Items = items,
+            //    ProrationDate = prorationDate,
+            //};
+
+            //if (!string.IsNullOrEmpty(paymentMethodId))
+            //{
+            //    options.DefaultPaymentMethod = paymentMethodId;
+            //}
+
             var options = new SubscriptionUpdateOptions
             {
-                Items = items,
-                ProrationDate = prorationDate,
+                Items =
+                [
+                    new SubscriptionItemOptions {
+                        Id = subscriptionItemId,
+                        Deleted = true
+                    },
+                    new SubscriptionItemOptions {
+                        Price = priceId
+                    }
+                ],
             };
-
-            if (!string.IsNullOrEmpty(paymentMethodId))
-            {
-                options.DefaultPaymentMethod = paymentMethodId;
-            }
-
             return await service.UpdateAsync(subscriptionId, options);
         }
     }

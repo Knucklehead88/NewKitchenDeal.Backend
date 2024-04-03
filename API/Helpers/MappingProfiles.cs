@@ -45,6 +45,9 @@ namespace API.Helpers
                 .ForMember(a => a.Id, opt => opt.Ignore())
                 .ReverseMap();
 
+            //CreateMap<Location, LocationDto>()
+            //    .ForSourceMember(a => a.Point, opt => opt.DoNotValidate());
+
             CreateMap<ExternalAuthDto, ExternalAuth>().ReverseMap();
             CreateMap<BusinessInfoDto, BusinessInfo>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
@@ -52,19 +55,10 @@ namespace API.Helpers
                 .ForMember(a => a.Locations, opt => opt.Ignore())
                 .ReverseMap();
 
-            //CreateMap<BusinessInfo, BusinessInfoDto>()
-            //    .ForMember(a => a.VideoPresentationFile, opt => opt.Ignore());
-
-            CreateMap<BusinessInfo, ResponseBusinessInfoTradesDto>()
-                .ForMember(a => a.Trades, opt => opt.Ignore());
-
             CreateMap<BusinessInfo, ResponseBusinessInfoDto>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
                 .ForMember(a => a.SpokenLanguages, opt => opt.Ignore())
                 .ForMember(a => a.Locations, opt => opt.Ignore());
-
-
-            //.ForMember(a => a.VideoPresentation, opt => opt.Ignore());
 
             CreateMap<ResponseBusinessInfoDto, BusinessInfo>()
                 .ForMember(a => a.Trades, opt => opt.Ignore())
@@ -115,6 +109,7 @@ namespace API.Helpers
                 .ReverseMap();
 
             CreateMap<Stripe.Subscription, SubscriptionDto>()
+                .ForMember(d => d.SubscriptionItemId, o => o.MapFrom(s => s.Items.Data[0].Id))
                 .ReverseMap();
 
             CreateMap<Subscription, SubscriptionDto>()

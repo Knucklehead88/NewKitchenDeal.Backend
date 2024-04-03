@@ -25,7 +25,6 @@ namespace API.Controllers
         private readonly UserManager<AppUser> _userManager;
         private readonly ICrudService<Trade> _tradeService;
         private readonly ICrudService<Language> _languageService;
-        private readonly ICrudService<Location> _locationService;
         private readonly IMediaUploadService _mediaUploadService;
         private readonly IMapper _mapper;
         private readonly MyAwsCredentials _credentials;
@@ -33,7 +32,6 @@ namespace API.Controllers
         public BusinessInfoController(UserManager<AppUser> userManager,
             ICrudService<Trade> tradeService,
             ICrudService<Language> languageService,
-            ICrudService<Location> locationService,
             IMediaUploadService mediaUploadService,
             IMapper mapper,
             MyAwsCredentials credentials)
@@ -43,7 +41,6 @@ namespace API.Controllers
             _userManager = userManager;
             _tradeService = tradeService;
             _languageService = languageService;
-            _locationService = locationService;
             _mediaUploadService = mediaUploadService;
         }
 
@@ -110,12 +107,15 @@ namespace API.Controllers
                 BusinessInfo = businessInfo
             }));
 
-            var businessInfoLocations = businessInfoDto.Locations.Select(l => new 
-                BusinessInfoLocation()
+            var businessInfoLocations = businessInfoDto.Locations.Select(l => {
+                var newBusinessInfo = new BusinessInfoLocation()
                 {
                     Location = _mapper.Map<Location>(l),
                     BusinessInfo = businessInfo
-                }).ToList();
+                };
+                return newBusinessInfo;
+            }).ToList();
+
             businessInfo.Locations = businessInfoLocations;
 
             user.BusinessInfo = businessInfo;
@@ -153,9 +153,7 @@ namespace API.Controllers
             var trades = await _tradeService.ListAllAsync();
             var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
 
-            var locations = await _locationService.ListAllAsync();
-            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(locations.Where(l => user.BusinessInfo.Locations.Any(lo => lo.LocationId == l.Id)).ToList());
-
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(user.BusinessInfo.Locations.Select(l => l.Location).ToList());
             if (languagesDto.Count != 0)
             {
                 businessInfoDto.SpokenLanguages = languagesDto;

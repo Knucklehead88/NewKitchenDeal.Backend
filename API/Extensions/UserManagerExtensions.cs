@@ -6,6 +6,7 @@ using Core.Entities.Identity;
 using Core.Specifications;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using NetTopologySuite.Geometries;
 
 namespace API.Extensions
@@ -30,6 +31,7 @@ namespace API.Extensions
                 .Include(x => x.Subscription)
                 .Include(x => x.PersonalInfo)
                     .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
                 .SingleOrDefaultAsync(x => x.Email == email);
         }
 
@@ -42,6 +44,7 @@ namespace API.Extensions
                 .Include(x => x.Subscription)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Trades)
                 .Include(x => x.BusinessInfo)
@@ -65,6 +68,21 @@ namespace API.Extensions
                 .SingleOrDefaultAsync(x => x.Email == Email);
         }
 
+        public static async Task<AppUser> FindByEmailWithSubscriptionAndBusinessInfo(this UserManager<AppUser> userManager,
+            string email)
+        {
+            return await userManager.Users
+                .Include(x => x.Subscription)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Trades)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.SpokenLanguages)
+                .SingleOrDefaultAsync(x => x.Email == email);
+        }
+
         public static async Task<AppUser> FindByLoginProviderWithSubscription(this UserManager<AppUser> userManager,
         string loginProvider, string providerKey)
         {
@@ -79,66 +97,66 @@ namespace API.Extensions
             var spec = new UserWithFiltersSpecification(userParams);
 
             var query = userManager.Users.AsQueryable();
+            var minPrice = userParams.MinPrice > 0 ? userParams.MinPrice : default;
+            var maxPrice = userParams.MaxPrice > 0 ? userParams.MaxPrice : decimal.MaxValue;
 
-            if (userParams?.DailyRate != 0)
+            if (userParams.ByDaily)
             {
-                query = query.Where(x => x.BusinessInfo.DailyRate == userParams.DailyRate);
+                query = query.Where(x => x.BusinessInfo.DailyRate >= minPrice && x.BusinessInfo.DailyRate <= maxPrice);
             }
 
-            if (userParams?.HourlyRate != 0)
+            if (userParams.ByHourly)
             {
-                query = query.Where(x => x.BusinessInfo.HourlyRate == userParams.HourlyRate);
+                query = query.Where(x => x.BusinessInfo.HourlyRate >= minPrice && x.BusinessInfo.HourlyRate <= maxPrice);
             }
-
-            if (!string.IsNullOrEmpty(userParams.DailyRateRange))
-            {
-                decimal lowerRange = decimal.MinValue;
-                decimal upperRange = decimal.MaxValue;
-                var result = userParams.DailyRateRange.Split('-').Select(d => d.Trim());
-                _ = decimal.TryParse(result.First(), out lowerRange);
-                _ = decimal.TryParse(result.Last(), out upperRange);
-                query = query.Where(x => x.BusinessInfo.DailyRate > lowerRange && x.BusinessInfo.DailyRate < upperRange);
-            }
-
-            if (!string.IsNullOrEmpty(userParams.HourlyRateRange))
-            {
-                decimal lowerRange = decimal.MinValue;
-                decimal upperRange = decimal.MaxValue;
-                var result = userParams.HourlyRateRange.Split('-').Select(d => d.Trim());
-                _ = decimal.TryParse(result.First(), out lowerRange);
-                _ = decimal.TryParse(result.Last(), out upperRange);
-                query = query.Where(x => x.BusinessInfo.HourlyRate >= lowerRange && x.BusinessInfo.HourlyRate <= upperRange);
-            }
-
+            
             if (!string.IsNullOrEmpty(userParams.Search))
             {
                 query = query.Where(x => x.UserName.Contains(userParams.Search) || x.BusinessInfo.BusinessName.Contains(userParams.Search));
             }
 
-            if (userParams.LanguageId.HasValue)
+            if (userParams.LanguageIds?.Count != null && userParams.LanguageIds?.Count > 0)
             {
-                query = query.Where(x => x.BusinessInfo.SpokenLanguages.Any(l => l.LanguageId == userParams.LanguageId));
+                query = query.Where(x => x.BusinessInfo.SpokenLanguages.Any(l => userParams.LanguageIds.Contains(l.LanguageId)));
             }
 
-            if (userParams.TradeId.HasValue)
+            if (userParams.TradeIds?.Count != null && userParams.TradeIds?.Count > 0)
             {
-                query = query.Where(x => x.BusinessInfo.Trades.Any(t => t.TradeId == userParams.TradeId));
+                query = query.Where(x => x.BusinessInfo.Trades.Any(t => userParams.TradeIds.Contains(t.TradeId)));
             }
+
+            if (userParams.MapBoxIds?.Count != null && userParams.MapBoxIds?.Count > 0)
+            {
+                query = query.Where(x => x.BusinessInfo.Locations.Any(l => userParams.MapBoxIds.Contains(l.Location.MapBoxId)));
+            }
+
+            if (userParams.Latitude != null && userParams.Longitude != null)
+            {
+                //foreach (var q in query)
+                //{
+                //    q.BusinessInfo.Locations.OrderBy(x => CalculateDistance(x.Location.Longitude, x.Location.Latitude, 
+                //        userParams.Longitude.Value, userParams.Latitude.Value));
+                //}
+                //query = query.OrderBy(x => CalculateDistance(x.BusinessInfo.Locations.FirstOrDefault().Location.Longitude, 
+                //                                             x.BusinessInfo.Locations.FirstOrDefault().Location.Latitude,
+                //                                            userParams.Longitude.Value, userParams.Latitude.Value));
+            }
+            //if (spec.Criteria != null)
+            //{
+            //    query = query.Where(spec.Criteria);
+            //}
 
             if (spec.OrderBy != null)
             {
                 query = query.OrderBy(spec.OrderBy);
             }
 
-            if (spec.Criteria != null)
-            {
-                query = query.Where(spec.Criteria);
-            }
-
             if (spec.OrderByDescending != null)
             {
                 query = query.OrderByDescending(spec.OrderByDescending);
             }
+
+
 
             //if (spec.IsPagingEnabled)
             //{
@@ -147,16 +165,27 @@ namespace API.Extensions
 
             //var distances = query.Select(x => new Point(x.BusinessInfo.Locations.First().Location.Longitude, x.BusinessInfo.Locations.First().Location.Lati
                 
-            //    tude));
 
             query = query.Include(x => x.Subscription)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.Trades)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.SpokenLanguages);
             return await query.ToListAsync();
+        }
+
+        public static double CalculateDistance(double langitude, double latitude, double newLong, double newLat)
+        {
+            var d1 = latitude * (Math.PI / 180.0);
+            var num1 = langitude * (Math.PI / 180.0);
+            var d2 = newLat * (Math.PI / 180.0);
+            var num2 = newLong * (Math.PI / 180.0) - num1;
+            var d3 = Math.Pow(Math.Sin((d2 - d1) / 2.0), 2.0) +
+                     Math.Cos(d1) * Math.Cos(d2) * Math.Pow(Math.Sin(num2 / 2.0), 2.0);
+            return 6376500.0 * (2.0 * Math.Atan2(Math.Sqrt(d3), Math.Sqrt(1.0 - d3)));
         }
     }
 }

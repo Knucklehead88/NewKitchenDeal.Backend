@@ -36,7 +36,6 @@ namespace API.Controllers
         private readonly IEmailService _emailService;
         private readonly ICustomersService _customerService;
         private readonly ICrudService<Trade> _tradeService;
-        private readonly ICrudService<Location> _locationService;
         private readonly ICrudService<Language> _languageService;
         private readonly IMediaUploadService _mediaUploadService;
         private readonly MyAwsCredentials _credentials;
@@ -52,7 +51,6 @@ namespace API.Controllers
             ICustomersService customerService, 
             ICrudService<Trade> tradeService,
             ICrudService<Language> languageService,
-            ICrudService<Location> locationService,
             IMediaUploadService mediaUploadService,
             MyAwsCredentials credentials)
         {
@@ -64,9 +62,9 @@ namespace API.Controllers
             _userManager = userManager;
             _tradeService = tradeService;
             _languageService = languageService;
-            _locationService = locationService;
             _mediaUploadService = mediaUploadService;
             _credentials = credentials;
+
         }
 
         [Authorize]
@@ -76,7 +74,7 @@ namespace API.Controllers
             var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
             if (user == null) return Unauthorized(new ApiResponse(401));
 
-            var userDto =  new UserBiDto
+            var userDto = new UserDto
             {
                 Email = user.Email,
                 EmailConfirmed = user.EmailConfirmed,
@@ -89,15 +87,7 @@ namespace API.Controllers
 
             if (user?.BusinessInfo != null)
             {
-                var trades = await _tradeService.ListAllAsync();
-                var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
-                var businessInfoDto = _mapper.Map<ResponseBusinessInfoTradesDto>(user.BusinessInfo);
-
-                if (tradesDto.Count != 0)
-                {
-                    businessInfoDto.Trades = tradesDto;
-                }
-                userDto.BusinessInfo = businessInfoDto;
+                await MapBusinessInfoToDto(user, userDto);
             }
 
             return userDto;
@@ -106,7 +96,7 @@ namespace API.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<UserDto>> Login(LoginDto loginDto)
         {
-            var user = await _userManager.FindByEmailWithSubscription(loginDto.Email);
+            var user = await _userManager.FindByEmailWithSubscriptionAndBusinessInfo(loginDto.Email);
 
             if (user == null) return Unauthorized(new ApiResponse(401));
 
@@ -120,7 +110,7 @@ namespace API.Controllers
 
             if (!result.Succeeded) return Unauthorized(new ApiResponse(401));
 
-            return new UserDto
+            var userDto = new UserDto
             {
                 Email = user.Email,
                 EmailConfirmed = user.EmailConfirmed,
@@ -130,24 +120,76 @@ namespace API.Controllers
                 Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId
             };
+
+            if (user?.BusinessInfo != null)
+            {
+                await MapBusinessInfoToDto(user, userDto);
+            }
+            return userDto;
         }
 
+        private async Task MapBusinessInfoToDto(AppUser user, UserDto userDto)
+        {
+            var trades = await _tradeService.ListAllAsync();
+            var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
 
-        [Authorize]
+            var languages = await _languageService.ListAllAsync();
+            var languagesDto = _mapper.Map<List<Language>, List<ResponseLanguageDto>>(languages.Where(l => user.BusinessInfo.SpokenLanguages.Any(sp => sp.LanguageId == l.Id)).ToList());
+
+            var businessInfoDto = _mapper.Map<ResponseBusinessInfoDto>(user.BusinessInfo);
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(user.BusinessInfo.Locations.Select(l => l.Location).ToList());
+
+            if (languagesDto.Count != 0)
+            {
+                businessInfoDto.SpokenLanguages = languagesDto;
+            }
+
+            if (locationsDto.Count != 0)
+            {
+                businessInfoDto.Locations = locationsDto;
+            }
+
+            if (tradesDto.Count != 0)
+            {
+                businessInfoDto.Trades = tradesDto;
+            }
+            userDto.BusinessInfo = businessInfoDto;
+        }
+
         [HttpGet("getcontractors")]
         public async Task<ActionResult<Pagination<UserDto>>> GetUsers([FromQuery] UserSpecParams userParams)
         {
             var users = await _userManager.FindByUserParams(userParams);
+            var trades = await _tradeService.ListAllAsync();
+            var languages = await _languageService.ListAllAsync();
 
-            var userDtos = users.Select((user) => new UserDto
-            {
-                Email = user.Email,
-                EmailConfirmed = user.EmailConfirmed,
-                Token = _tokenService.CreateToken(user),
-                DisplayName = user.DisplayName,
-                ProfilePictureUrl = user.ProfilePictureUrl,
-                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
-                CustomerId = user.CustomerId
+
+            var userDtos = users.Select((user) => {
+                var businessInfoDto = _mapper.Map<ResponseBusinessInfoDto>(user.BusinessInfo);
+
+                if (businessInfoDto != null)
+                {
+                    var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
+                    businessInfoDto.Trades = tradesDto;
+
+                    var languagesDto = _mapper.Map<List<Language>, List<ResponseLanguageDto>>(languages.Where(l => user.BusinessInfo.SpokenLanguages.Any(sp => sp.LanguageId == l.Id)).ToList());
+                    businessInfoDto.SpokenLanguages = languagesDto;
+
+                    var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(user.BusinessInfo.Locations.Select(l => l.Location).ToList());
+                    businessInfoDto.Locations = locationsDto;
+                }
+
+                var userDto = new UserDto
+                {
+                    Email = user.Email,
+                    EmailConfirmed = user.EmailConfirmed,
+                    DisplayName = user.DisplayName,
+                    ProfilePictureUrl = user.ProfilePictureUrl,
+                    Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
+                    CustomerId = user.CustomerId,
+                    BusinessInfo = businessInfoDto
+                };
+                return userDto;
             }).ToList().AsReadOnly();
             return Ok(new Pagination<UserDto>(userParams.PageIndex, userParams.PageSize, userDtos.Count, userDtos));
 
@@ -252,7 +294,7 @@ namespace API.Controllers
                 user = await _userManager.FindByEmailWithSubscription(payload.Email);
                 if (user == null)
                 {
-                    var customer = await _customerService.CreateCustomerAsync(user.DisplayName, user.Email);
+                    var customer = await _customerService.CreateCustomerAsync(payload.GivenName, payload.Email);
                     if(customer == null)
                     {
                         return BadRequest(new ApiResponse(400, "We could not create a stripe customer."));

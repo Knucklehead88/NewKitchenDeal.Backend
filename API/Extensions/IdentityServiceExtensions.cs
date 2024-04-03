@@ -23,9 +23,9 @@ namespace API.Extensions
         {
             services.AddDbContext<AppIdentityDbContext>(opt =>
             {
-                //opt.UseNpgsql(config.Get<MyAwsCredentials>().IdentityConnection);
+                opt.UseNpgsql(config.Get<MyAwsCredentials>().IdentityConnection);
 
-                opt.UseNpgsql(config.GetConnectionString("IdentityConnection"), x => x.UseNetTopologySuite());
+                //opt.UseNpgsql(config.GetConnectionString("IdentityConnection"));
                 //opt.UseNpgsql(Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING"));
 
             });

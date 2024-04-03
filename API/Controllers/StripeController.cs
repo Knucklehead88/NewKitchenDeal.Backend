@@ -478,7 +478,7 @@ namespace API.Controllers
                     return NotFound(new ApiResponse(404));
                 }
 
-                if(user.Subscription != null)
+                if(user.Subscription != null) /*|| user?.Subscription?.Status == "canceled")*/
                 {
                     return BadRequest(new ApiResponse(400, $"{user.Email} already has a Subscription."));
                 }
@@ -491,7 +491,10 @@ namespace API.Controllers
                      Id = subscription.Id,
                      StartDate = subscription.Created,
                      EndDate = subscription.CurrentPeriodEnd,
-                     Description  = price.Product.Description,
+                    Status = subscription.Status,
+                    CancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
+                    SubscriptionItemId = subscription.Items.Data[0].Id,
+                    Description  = price.Product.Description,
                      PlanType = price.Product.Name,
                      Price = price.UnitAmountDecimal
                 };
@@ -506,16 +509,10 @@ namespace API.Controllers
         }
 
         [HttpPost("completesubscription")]
-        public async Task<ActionResult<SubscriptionDto>> CompleteSubscription(string paymentIntentId)
+        public async Task<ActionResult<SubscriptionDto>> CompleteSubscriptionAsync(string paymentIntentId)
         {
             try
             {
-                var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
-                if (user == null)
-                {
-                    return NotFound(new ApiResponse(404));
-                }
-
                 var result = await _subscriptionService.CompleteSubscriptionAsync(paymentIntentId);
                 if (result == null)
                 {
@@ -570,13 +567,18 @@ namespace API.Controllers
 
                 if (subscription != null && subscription.Status == "active")
                 {
-                    var userSubscription = new Core.Entities.Identity.Subscription();
-                    userSubscription.Id = subscription.Id;
-                    userSubscription.StartDate = subscription.StartDate;
-                    userSubscription.EndDate = subscription.CurrentPeriodEnd;
-                    userSubscription.Price = price.UnitAmountDecimal;
-                    userSubscription.Description = price.Product.Description;
-                    userSubscription.PlanType = price.Product.Name;
+                    var userSubscription = new Core.Entities.Identity.Subscription
+                    {
+                        Id = subscription.Id,
+                        StartDate = subscription.Created,
+                        EndDate = subscription.CurrentPeriodEnd,
+                        Status = subscription.Status,
+                        CancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
+                        SubscriptionItemId = subscription.Items.Data[0].Id,
+                        Price = price.UnitAmountDecimal,
+                        Description = price.Product.Description,
+                        PlanType = price.Product.Name
+                    };
                     user.Subscription = userSubscription;
                     await _userManager.UpdateAsync(user);
                 }
@@ -608,7 +610,7 @@ namespace API.Controllers
 
 
         [HttpDelete("cancelsubscription")]
-        public async Task<ActionResult> CancelSubscription(string id)
+        public async Task<ActionResult<SubscriptionDto>> CancelSubscription(string id)
         {
             try
             {
@@ -625,7 +627,7 @@ namespace API.Controllers
                 }
 
                 var subscription = await _subscriptionService.CancelSubscriptionsAsync(id);
-                return NoContent();
+                return _mapper.Map<SubscriptionDto>(subscription);
             }
             catch (Exception ex)
             {
@@ -644,7 +646,7 @@ namespace API.Controllers
                     return NotFound(new ApiResponse(404));
                 }
 
-                var subscription = await _subscriptionService.ChangeSubscriptionAsync(paymentMethodId, user.Subscription.Id, priceId);
+                var subscription = await _subscriptionService.ChangeSubscriptionAsync(paymentMethodId, user.Subscription.Id, user.Subscription.SubscriptionItemId, priceId);
                 var price = await _pricesService.GetPriceAsync(priceId);
 
                 if (user.Subscription != null)
@@ -652,6 +654,9 @@ namespace API.Controllers
                     user.Subscription.Id = subscription.Id;
                     user.Subscription.StartDate = subscription.StartDate;
                     user.Subscription.EndDate = subscription.CurrentPeriodEnd;
+                    user.Subscription.Status = subscription.Status;
+                    user.Subscription.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
+                    user.Subscription.SubscriptionItemId = subscription.Items.Data[0].Id;
                     user.Subscription.Price = price.UnitAmountDecimal;
                     user.Subscription.Description = price.Product.Description;
                     user.Subscription.PlanType = price.Product.Name;

@@ -16,5 +16,6 @@ namespace API.Dtos
         public string CustomerId { get; set; }
         public string ProfilePictureUrl { get; set; }
         public SubscriptionDto Subscription { get; set; }
+        public ResponseBusinessInfoDto BusinessInfo { get; set; }
     }
 }

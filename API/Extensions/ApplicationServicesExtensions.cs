@@ -22,8 +22,8 @@ namespace API.Extensions
             // services.AddSingleton<IResponseCacheService, ResponseCacheService>();
             services.AddDbContext<StoreContext>(opt =>
             {
-                //opt.UseNpgsql(config.Get<MyAwsCredentials>().DefaultConnection);
-                opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
+                opt.UseNpgsql(config.Get<MyAwsCredentials>().DefaultConnection);
+                //opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
                 //opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
 
             });

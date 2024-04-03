@@ -19,7 +19,7 @@ namespace Core.Interfaces.Stripe
         Task<AppUser> CreateUserSubscriptionAsync(string email, string priceId, Subscription subscription);
         Task<StripeList<Subscription>> GetSubscriptionsAsync(int take);
         Task<Subscription> CancelSubscriptionsAsync(string id);
-        Task<Subscription> ChangeSubscriptionAsync(string paymentMethodId, string subscriptionId, string priceId);
+        Task<Subscription> ChangeSubscriptionAsync(string paymentMethodId, string subscriptionId, string subscriptionItemId, string priceId);
         Task<PaymentIntent> CompleteSubscriptionAsync(string paymentIntentId);
     }
 }
