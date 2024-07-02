@@ -16,8 +16,6 @@ namespace Infrastructure.Services
     {
         private readonly MyAwsCredentials _credentials;
 
-        // private readonly IConfiguration _config;
-
         public EmailService(MyAwsCredentials credentials)
         {
             _credentials = credentials;
@@ -51,6 +49,11 @@ namespace Infrastructure.Services
             await client.AuthenticateAsync(_credentials.EmailAddress, _credentials.EmailPasscode);
             await client.SendAsync(message);
             await client.DisconnectAsync(true);
+        }
+
+        public Task<string> SendTemplatedEmailAsync(string toAddress, string userName)
+        {
+            throw new NotImplementedException();
         }
     }
 }

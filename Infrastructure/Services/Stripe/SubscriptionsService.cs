@@ -162,11 +162,6 @@ namespace Infrastructure.Services.Stripe
             //    ProrationDate = prorationDate,
             //};
 
-            //if (!string.IsNullOrEmpty(paymentMethodId))
-            //{
-            //    options.DefaultPaymentMethod = paymentMethodId;
-            //}
-
             var options = new SubscriptionUpdateOptions
             {
                 Items =
@@ -180,6 +175,25 @@ namespace Infrastructure.Services.Stripe
                     }
                 ],
             };
+
+
+            //var options = new SubscriptionUpdateOptions
+            //{
+            //    Items =
+            //        [
+            //            new SubscriptionItemOptions
+            //            {
+            //                Id = subscriptionItemId,
+            //                Price = priceId
+            //            }
+            //        ],
+            //};
+
+            if (!string.IsNullOrEmpty(paymentMethodId))
+            {
+                options.DefaultPaymentMethod = paymentMethodId;
+            }
+
             return await service.UpdateAsync(subscriptionId, options);
         }
     }

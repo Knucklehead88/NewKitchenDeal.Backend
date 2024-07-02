@@ -33,6 +33,7 @@ namespace API.Controllers
         //}
 
         [HttpPost("upload")]
+        [NonAction]
         public async Task<IActionResult> UploadFileAsync(IFormFile file, string bucketName, string prefix)
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
@@ -49,6 +50,7 @@ namespace API.Controllers
         }
 
         [HttpGet("getall")]
+        [NonAction]
         public async Task<IActionResult> GetAllFilesAsync(string bucketName, string prefix)
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
@@ -77,6 +79,7 @@ namespace API.Controllers
         }
 
         [HttpGet("getbykey")]
+        [NonAction]
         public async Task<IActionResult> GetFileByKeyAsync(string bucketName, string key)
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);
@@ -86,6 +89,7 @@ namespace API.Controllers
         }
 
         [HttpDelete("delete")]
+        [NonAction]
         public async Task<IActionResult> DeleteFileAsync(string bucketName, string key)
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, bucketName);

@@ -18,17 +18,12 @@ namespace Infrastructure.Services
         private readonly IAmazonS3 _s3Client;
         private const string BucketName = "newprojectdeal-media";
 
-        //public MediaUploadService(IAmazonS3 s3Client)
-        //{
-        //    _s3Client = s3Client;
-        //}
-
         public MediaUploadService()
         {
             _s3Client = new AmazonS3Client("AKIA27DDRANTZ6ESXHMX", "hplpTDC4SfMx7ExbPcBWQLt1hoWmQMqKWdUfx4wn", Amazon.RegionEndpoint.USEast1);
         }
 
-        public async Task<PutObjectResponse> UploadFileAsync(string key, IFormFile file)
+        public async Task<PutObjectResponse> UploadFileAsync(string key, IFormFile file, CancellationToken cancellationToken)
         {
             var bucketExists = await AmazonS3Util.DoesS3BucketExistV2Async(_s3Client, BucketName);
             if (!bucketExists) return null;
@@ -40,7 +35,7 @@ namespace Infrastructure.Services
                 InputStream = file.OpenReadStream(),
             };
             putObjectRequest.Metadata.Add("Content-Type", file.ContentType);
-            return await _s3Client.PutObjectAsync(putObjectRequest);
+            return await _s3Client.PutObjectAsync(putObjectRequest, cancellationToken);
         }
 
         public async Task<GetObjectResponse> GetFileAsync(string url)
@@ -67,16 +62,16 @@ namespace Infrastructure.Services
 
         }
 
-        public async Task<DeleteObjectResponse> DeleteFileAsync(string url)
+        public async Task<DeleteObjectResponse> DeleteFileAsync(string url, CancellationToken cancellationToken)
         {
             var fileUri = new Uri(url);
-            var key = string.Concat(fileUri.Segments.Skip(0));
+            var key = string.Concat(fileUri.Segments.Skip(1));
             var deleteObjectRequest = new DeleteObjectRequest
             {
                 BucketName = BucketName,
                 Key = key
             };
-            return await _s3Client.DeleteObjectAsync(deleteObjectRequest);
+            return await _s3Client.DeleteObjectAsync(deleteObjectRequest, cancellationToken);
         }
     }
 

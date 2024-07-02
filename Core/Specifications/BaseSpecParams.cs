@@ -11,7 +11,7 @@ namespace Core.Specifications
         protected const int MaxPageSize = 50;
         public int PageIndex { get; set; } = 1;
 
-        protected int _pageSize = 6;
+        protected int _pageSize = 10;
         public int PageSize
         {
             get => _pageSize;
@@ -23,7 +23,7 @@ namespace Core.Specifications
         public string Search
         {
             get => _search;
-            set => _search = value.ToLower();
+            set => _search = value?.ToLower();
         }
     }
 }

@@ -64,8 +64,9 @@ namespace API.Helpers
                 .ForMember(a => a.Trades, opt => opt.Ignore())
                 .ForMember(a => a.SpokenLanguages, opt => opt.Ignore());
 
-            CreateMap<Trade, TradeDto>()
-                .ReverseMap();
+            CreateMap<TradeDto, Trade>()
+                .ForMember(a => a.Categories, opt => opt.Ignore());
+
             CreateMap<Trade, ResponseTradeDto>()
                 .ReverseMap();
             CreateMap<Language, LanguageDto>().ReverseMap();

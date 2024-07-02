@@ -14,6 +14,7 @@
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
     <PackageReference Include="AWSSDK.S3" Version="3.7.305.30" />
     <PackageReference Include="AWSSDK.SecretsManager" Version="3.7.302.31" />
+    <PackageReference Include="AWSSDK.SimpleEmail" Version="3.7.300.74" />
     <PackageReference Include="Google.Apis.Auth" Version="1.66.0" />
     <PackageReference Include="MailKit" Version="4.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Facebook" Version="8.0.2" />

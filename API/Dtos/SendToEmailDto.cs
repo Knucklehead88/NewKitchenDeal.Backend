@@ -14,7 +14,6 @@ namespace API.Dtos
         [EmailAddress]
         public string Email { get; set; }
         
-        [Required]
         [Phone]
         public string PhoneNumber { get; set; }
         

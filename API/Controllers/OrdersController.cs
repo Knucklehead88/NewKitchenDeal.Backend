@@ -16,6 +16,7 @@ namespace API.Controllers
         private readonly IMapper _mapper = mapper;
 
         [HttpPost]
+        [NonAction]
         public async Task<ActionResult<Order>> CreateOrder(OrderDto orderDto)
         {
             var email = HttpContext.User.RetrieveEmailFromPrincipal();
@@ -30,6 +31,7 @@ namespace API.Controllers
         }
         
         [HttpGet]
+        [NonAction]
         public async Task<ActionResult<IReadOnlyList<OrderToReturnDto>>> GetOrdersForUser()
         {
             var email = User.RetrieveEmailFromPrincipal();
@@ -40,6 +42,7 @@ namespace API.Controllers
         }
 
         [HttpGet("{id}")]
+        [NonAction]
         public async Task<ActionResult<OrderToReturnDto>> GetOrderByIdForUser(int id)
         {
             var email = User.RetrieveEmailFromPrincipal();

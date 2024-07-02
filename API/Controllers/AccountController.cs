@@ -24,6 +24,7 @@ using System.Net;
 using API.Helpers;
 using Core.Specifications;
 using Infrastructure.Data;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace API.Controllers
 {
@@ -34,6 +35,7 @@ namespace API.Controllers
         private readonly ITokenService _tokenService;
         private readonly IMapper _mapper;
         private readonly IEmailService _emailService;
+        private readonly IAwsEmailService _awsEmailService;
         private readonly ICustomersService _customerService;
         private readonly ICrudService<Trade> _tradeService;
         private readonly ICrudService<Language> _languageService;
@@ -48,6 +50,7 @@ namespace API.Controllers
             ITokenService tokenService, 
             IMapper mapper, 
             IEmailService emailService, 
+            IAwsEmailService  awsEmailService,
             ICustomersService customerService, 
             ICrudService<Trade> tradeService,
             ICrudService<Language> languageService,
@@ -56,6 +59,7 @@ namespace API.Controllers
         {
             _mapper = mapper;
             _emailService = emailService;
+            _awsEmailService = awsEmailService;
             _customerService = customerService;
             _tokenService = tokenService;
             _signInManager = signInManager;
@@ -71,7 +75,7 @@ namespace API.Controllers
         [HttpGet]
         public async Task<ActionResult<UserDto>> GetCurrentUser()
         {
-            var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
+            var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfoAndPersonalInfo(User);
             if (user == null) return Unauthorized(new ApiResponse(401));
 
             var userDto = new UserDto
@@ -90,6 +94,11 @@ namespace API.Controllers
                 await MapBusinessInfoToDto(user, userDto);
             }
 
+            if (user?.PersonalInfo != null)
+            {
+                MapPersonalInfoToDto(user, userDto);
+            }
+
             return userDto;
         }
 
@@ -100,11 +109,11 @@ namespace API.Controllers
 
             if (user == null) return Unauthorized(new ApiResponse(401));
 
-            //if (!user.EmailConfirmed)
-            //{
-            //    return new BadRequestObjectResult(new ApiValidationErrorResponse
-            //    { Errors = [ "Email needs to be confirmed" ] });
-            //}
+            if (!user.EmailConfirmed)
+            {
+                return new BadRequestObjectResult(new ApiValidationErrorResponse
+                { Errors = ["Email needs to be confirmed"] });
+            }
 
             var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, false);
 
@@ -125,10 +134,37 @@ namespace API.Controllers
             {
                 await MapBusinessInfoToDto(user, userDto);
             }
+
+            if (user?.PersonalInfo != null)
+            {
+                MapPersonalInfoToDto(user, userDto);
+            }
             return userDto;
         }
 
-        private async Task MapBusinessInfoToDto(AppUser user, UserDto userDto)
+        private void MapPersonalInfoToDto(AppUser user, UserDto userDto = null, ContractorDto contractorDto = null)
+        {
+            var personalInfoDto = _mapper.Map<PersonalInfo, ResponsePersonalInfoDto>(user.PersonalInfo);
+
+            var locationsDto = _mapper.Map<List<Location>, List<LocationDto>>(user.PersonalInfo.Locations.Select(l => l.Location).ToList());
+
+            if (locationsDto.Count != 0)
+            {
+                personalInfoDto.Locations = locationsDto;
+            }
+
+            if (userDto != null)
+            {
+                userDto.PersonalInfo = personalInfoDto;
+            }
+
+            if (contractorDto != null)
+            {
+                contractorDto.PersonalInfo = personalInfoDto;
+            }
+        }
+
+        private async Task MapBusinessInfoToDto(AppUser user, UserDto userDto = null, ContractorDto contractorDto = null)
         {
             var trades = await _tradeService.ListAllAsync();
             var tradesDto = _mapper.Map<List<Trade>, List<ResponseTradeDto>>(trades.Where(t => user.BusinessInfo.Trades.Any(td => td.TradeId == t.Id)).ToList());
@@ -153,13 +189,81 @@ namespace API.Controllers
             {
                 businessInfoDto.Trades = tradesDto;
             }
-            userDto.BusinessInfo = businessInfoDto;
+
+            if (userDto != null)
+            {
+                userDto.BusinessInfo ??= businessInfoDto;
+            }
+
+            if(contractorDto != null)
+            {
+                contractorDto.BusinessInfo = businessInfoDto;
+            }
         }
 
         [HttpGet("getcontractors")]
-        public async Task<ActionResult<Pagination<UserDto>>> GetUsers([FromQuery] UserSpecParams userParams)
+        public async Task<ActionResult<Pagination<ContractorDto>>> GetUsers([FromQuery] UserSpecParams userParams)
         {
             var users = await _userManager.FindByUserParams(userParams);
+
+            if ((userParams.Latitude != null && userParams.Longitude != null) && (userParams.Sort != null && userParams.Sort.Equals("closes")))
+            {
+                var coordinateUsers = users.Where(u => u.BusinessInfo != null && u.BusinessInfo?.Locations?.Count > 0);
+                if (coordinateUsers.Any())
+                {
+                    foreach (var user in coordinateUsers)
+                    {
+                        user.BusinessInfo.Locations = [.. user.BusinessInfo.Locations.OrderBy(x => x.Location.DistanceTo(userParams.Longitude.Value, userParams.Latitude.Value))];
+                    }
+                    var filteredUsers = coordinateUsers.OrderBy(user => user.BusinessInfo.Locations.FirstOrDefault().Location.DistanceTo(userParams.Longitude.Value, userParams.Latitude.Value));
+                    users = [.. filteredUsers, .. users.Where(u => u.BusinessInfo == null || u.BusinessInfo?.Locations?.Count  == 0)];
+                }
+            }
+
+            if (!string.IsNullOrEmpty(userParams.Sort))
+            {
+                switch (userParams.Sort)
+                {
+                    case "dailyAsc":
+                        var filteredUsers = users.Where(u => u.BusinessInfo == null || u.BusinessInfo?.DailyRate == 0);
+
+                        users = users
+                            .Where(u => u.BusinessInfo != null && u.BusinessInfo?.DailyRate > 0)
+                            .OrderBy(u => u.BusinessInfo.DailyRate).ToList();
+                        users = [.. users,.. filteredUsers];
+                        break;
+                    case "dailyDesc":
+                        filteredUsers = users.Where(u => u.BusinessInfo == null || u.BusinessInfo?.DailyRate == 0);
+                        users = [.. users
+                            .Where(u => u.BusinessInfo != null && u.BusinessInfo?.DailyRate > 0)
+                            .OrderByDescending(u => u.BusinessInfo.DailyRate)];
+                        users = [.. users, .. filteredUsers];
+                        break;
+                    case "hourlyAsc":
+                        filteredUsers = users.Where(u => u.BusinessInfo == null || u.BusinessInfo?.HourlyRate == 0);
+
+                        users = [.. users
+                            .Where(u => u.BusinessInfo != null && u.BusinessInfo?.HourlyRate > 0)
+                            .OrderBy(u => u.BusinessInfo.HourlyRate)];
+                        users = [.. users, .. filteredUsers];
+
+                        break;
+                    case "hourlyDesc":
+                        filteredUsers = users.Where(u => u.BusinessInfo == null || u.BusinessInfo?.HourlyRate == 0);
+
+                        users = [.. users
+                            .Where(u => u.BusinessInfo != null && u.BusinessInfo?.HourlyRate > 0)
+                            .OrderByDescending(u => u.BusinessInfo.HourlyRate)];
+                        users = [.. users, .. filteredUsers];
+
+                        break;
+                }
+            }
+
+            var spec = new UserWithFiltersSpecification(userParams);
+
+            users = users.Skip(spec.Skip).Take(spec.Take).ToList();
+
             var trades = await _tradeService.ListAllAsync();
             var languages = await _languageService.ListAllAsync();
 
@@ -179,10 +283,10 @@ namespace API.Controllers
                     businessInfoDto.Locations = locationsDto;
                 }
 
-                var userDto = new UserDto
+                var userDto = new ContractorDto
                 {
+                    ContractorId = user.Id,
                     Email = user.Email,
-                    EmailConfirmed = user.EmailConfirmed,
                     DisplayName = user.DisplayName,
                     ProfilePictureUrl = user.ProfilePictureUrl,
                     Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
@@ -191,8 +295,37 @@ namespace API.Controllers
                 };
                 return userDto;
             }).ToList().AsReadOnly();
-            return Ok(new Pagination<UserDto>(userParams.PageIndex, userParams.PageSize, userDtos.Count, userDtos));
+            return Ok(new Pagination<ContractorDto>(userParams.PageIndex, userParams.PageSize, userDtos.Count, userDtos, totalCount: await _userManager.GetCount()));
 
+        }
+
+        [HttpGet("getcontractors/{contractorId}")]
+        public async Task<ActionResult<ContractorDto>> GetContractor(string contractorId)
+        {
+            var user = await _userManager.FindContractorByIdWithBusinessInfoAndPersonalInfo(contractorId);
+            if (user == null) return Unauthorized(new ApiResponse(401));
+
+            var contractorDto = new ContractorDto
+            {
+                ContractorId = user.Id,
+                Email = user.Email,
+                DisplayName = user.DisplayName,
+                ProfilePictureUrl = user.ProfilePictureUrl,
+                Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
+                CustomerId = user.CustomerId
+            };
+
+            if (user?.BusinessInfo != null)
+            {
+                await MapBusinessInfoToDto(user, contractorDto: contractorDto);
+            }
+
+            if (user?.PersonalInfo != null)
+            {
+                MapPersonalInfoToDto(user, contractorDto: contractorDto);
+            }
+
+            return contractorDto;
         }
 
         [HttpPost("register")]
@@ -203,7 +336,10 @@ namespace API.Controllers
                 return new BadRequestObjectResult(new ApiValidationErrorResponse 
                     { Errors = ["Email address is in use"] });
             }
-            var customer = await _customerService.CreateCustomerAsync(registerDto.DisplayName, registerDto.Email);
+
+            var customer = await _customerService.GetCustomerByEmailAsync(registerDto.Email) ?? 
+                await _customerService.CreateCustomerAsync(registerDto.DisplayName, registerDto.Email);
+
             if (customer == null)
             {
                 return BadRequest(new ApiResponse(400, "Invalid External Authentication."));
@@ -219,7 +355,8 @@ namespace API.Controllers
 
             var result = await _userManager.CreateAsync(user, registerDto.Password);
 
-            if (!result.Succeeded) return BadRequest(new ApiResponse(400));
+            if (!result.Succeeded) return new BadRequestObjectResult(new ApiValidationErrorResponse
+                                                                    { Errors = result.Errors.Select(e => e.Description)});
 
             var token = await _userManager.GenerateEmailConfirmationTokenAsync(user);
 
@@ -231,7 +368,8 @@ namespace API.Controllers
 
             var callback = QueryHelpers.AddQueryString(registerDto.ClientURI, param);
 
-            await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+            // await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+            await _awsEmailService.SendTemplatedConfirmEmailAsync(user.Email, user.DisplayName, callback);
             //await _userManager.AddToRoleAsync(user, "Viewer");
 
             return new UserDto
@@ -241,7 +379,6 @@ namespace API.Controllers
                 Token = _tokenService.CreateToken(user),
                 EmailConfirmed = user.EmailConfirmed,
                 ProfilePictureUrl = user.ProfilePictureUrl,
-                //Subscription = _mapper.Map<SubscriptionDto>(user.Subscription),
                 CustomerId = user.CustomerId,
             };
         }
@@ -255,6 +392,8 @@ namespace API.Controllers
             var confirmResult = await _userManager.ConfirmEmailAsync(user, token);
             if (!confirmResult.Succeeded)
                 return BadRequest(new ApiResponse(400, "Invalid Email Confirmation Request"));
+
+            await _awsEmailService.SendTemplatedWelcomeEmailAsync(user.Email, user.DisplayName, "https://app.newprojectdeal.com");
 
             return Ok("Thank you for confirming your email");
         }
@@ -274,7 +413,8 @@ namespace API.Controllers
             };
 
             var callback = QueryHelpers.AddQueryString(resendEmailDto.ClientURI, param);
-            await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+            // await _emailService.SendEmailAsync(user.Email, "Email Confirmation", callback);
+            await _awsEmailService.SendTemplatedConfirmEmailAsync(user.Email, user.DisplayName, callback);
 
             return Ok();
         }
@@ -388,7 +528,8 @@ namespace API.Controllers
             };
 
             var callback = QueryHelpers.AddQueryString(forgotPasswordDto.ClientURI, param); 
-            await _emailService.SendEmailAsync(user.Email, "Reset password token", callback);
+            // await _emailService.SendEmailAsync(user.Email, "Reset password token", callback);
+            await _awsEmailService.SendTemplatedResetPasswordAsync(user.Email, user.DisplayName, callback);
             
             return Ok();
         }
@@ -445,14 +586,30 @@ namespace API.Controllers
 
             var sendToEmail = _mapper.Map<SendToEmailDto, SendToEmail>(sendToEmailDto);
 
-            await _emailService.GetInTouchAsync(sendToEmail);
+            // await _emailService.GetInTouchAsync(sendToEmail);
+            await _awsEmailService.SendEmailAsync(sendToEmail.Email, sendToEmail.Message, sendToEmailDto.FirstName, sendToEmailDto.LastName);
             return Ok();
         }
 
-        [HttpPost("profilepicture")]
-        public async Task<ActionResult<string>> AddProfilePicture(IFormFile profilePicture)
+
+        [HttpPost("awsendemailtest")]
+        public async Task<ActionResult<string>> AwsSendEmail(string email, string subject, string messageBody)
         {
-            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
+            var messageId = await _awsEmailService.SendEmailAsync(email, subject, messageBody);
+            return Ok(messageId);
+        }
+
+        [HttpPost("awsverifyemail")]
+        public async Task<ActionResult<bool>> AwsVerifyEmail(string email)
+        {
+            bool success = await _awsEmailService.VerifyEmailIdentityAsync(email);
+            return Ok(success);
+        }
+
+        [HttpPost("profilepicture")]
+        public async Task<ActionResult<string>> AddProfilePicture(IFormFile profilePicture, CancellationToken cancellationToken)
+        {
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User, cancellationToken);
 
             if (user == null)
             {
@@ -466,7 +623,7 @@ namespace API.Controllers
                 return BadRequest(new ApiResponse(400, "File size exceeds the maximum allowed size (5 MB)."));
 
             var key = $"profile_picture/{Guid.NewGuid()}";
-            var response = await _mediaUploadService.UploadFileAsync(key, profilePicture);
+            var response = await _mediaUploadService.UploadFileAsync(key, profilePicture, cancellationToken);
 
             if (response.HttpStatusCode != HttpStatusCode.OK)
             {
@@ -485,7 +642,7 @@ namespace API.Controllers
         }
 
         [HttpDelete("profilepicture")]
-        public async Task<IActionResult> DeleteUserPerfonalInfoProfilePicture()
+        public async Task<IActionResult> DeleteUserPerfonalInfoProfilePicture(CancellationToken cancellationToken)
         {
             var user = await _userManager.FindByEmailFromClaimsPrincipal(User);
 
@@ -499,12 +656,22 @@ namespace API.Controllers
                 return NotFound(new ApiResponse(404, "The user does not have a profile picture"));
             }
 
-            var response = await _mediaUploadService.DeleteFileAsync(user.ProfilePictureUrl);
+            var response = await _mediaUploadService.DeleteFileAsync(user.ProfilePictureUrl, cancellationToken);
+            if(response.HttpStatusCode == HttpStatusCode.OK || response.HttpStatusCode == HttpStatusCode.NoContent)
+            {
+                user.ProfilePictureUrl = string.Empty;
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded)
+                {
+                    return BadRequest(new ApiResponse(400, "Problem updating the user's profile picture."));
+                }
+            }
+
             return response.HttpStatusCode switch
             {
                 HttpStatusCode.NoContent => Ok(),
                 HttpStatusCode.NotFound => NotFound(new ApiResponse(404, "The user does not have a profile picture")),
-                _ => BadRequest(new ApiResponse(400))
+                _ => BadRequest(new ApiResponse(400, "Problem deleting the user's profile picture."))
             };
         }
 

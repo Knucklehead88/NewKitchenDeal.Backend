@@ -8,9 +8,7 @@ namespace API.Extensions
                         string region,
                         string secretName)
         {
-            var configurationSource =
-                    new AmazonSecretsManagerConfigurationSource(region, secretName);
-
+            var configurationSource = new AmazonSecretsManagerConfigurationSource(region, secretName);
             configurationBuilder.Add(configurationSource);
         }
     }

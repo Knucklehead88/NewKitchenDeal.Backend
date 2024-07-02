@@ -23,7 +23,7 @@ namespace API.Extensions
         }
 
         public static async Task<AppUser> FindUserByClaimsPrincipleWithPersonalInfo(this UserManager<AppUser> userManager,
-            ClaimsPrincipal user)
+            ClaimsPrincipal user, CancellationToken cancellationToken)
         {
             var email = user.FindFirstValue(ClaimTypes.Email);
 
@@ -32,11 +32,11 @@ namespace API.Extensions
                 .Include(x => x.PersonalInfo)
                     .ThenInclude(x => x.Locations)
                         .ThenInclude(x => x.Location)
-                .SingleOrDefaultAsync(x => x.Email == email);
+                .SingleOrDefaultAsync(x => x.Email == email, cancellationToken);
         }
 
         public static async Task<AppUser> FindUserByClaimsPrincipleWithBusinessInfo(this UserManager<AppUser> userManager,
-            ClaimsPrincipal user)
+            ClaimsPrincipal user, CancellationToken cancellationToken)
         {
             var email = user.FindFirstValue(ClaimTypes.Email);
 
@@ -49,7 +49,43 @@ namespace API.Extensions
                     .ThenInclude(x => x.Trades)
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.SpokenLanguages)
+                .SingleOrDefaultAsync(x => x.Email == email, cancellationToken);
+        }
+
+        public static async Task<AppUser> FindUserByClaimsPrincipleWithBusinessInfoAndPersonalInfo(this UserManager<AppUser> userManager, ClaimsPrincipal user)
+        {
+            var email = user.FindFirstValue(ClaimTypes.Email);
+
+            return await userManager.Users
+                .Include(x => x.Subscription)
+                .Include(x => x.PersonalInfo)
+                    .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Trades)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.SpokenLanguages)
                 .SingleOrDefaultAsync(x => x.Email == email);
+        }
+
+        public static async Task<AppUser> FindContractorByIdWithBusinessInfoAndPersonalInfo(this UserManager<AppUser> userManager, string id)
+        {
+            return await userManager.Users
+                .Include(x => x.Subscription)
+                .Include(x => x.PersonalInfo)
+                    .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Locations)
+                        .ThenInclude(x => x.Location)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.Trades)
+                .Include(x => x.BusinessInfo)
+                    .ThenInclude(x => x.SpokenLanguages)
+                .SingleOrDefaultAsync(x => x.Id.Equals(id));
         }
 
         public static async Task<AppUser> FindByEmailFromClaimsPrincipal(this UserManager<AppUser> userManager, 
@@ -90,6 +126,10 @@ namespace API.Extensions
             return await userManager?.FindByEmailWithSubscription(user.Email);
         }
 
+        public static async Task<int> GetCount(this UserManager<AppUser> userManager)
+        {
+            return await userManager.Users.CountAsync();
+        }
 
         public static async Task<IReadOnlyList<AppUser>> FindByUserParams(this UserManager<AppUser> userManager,
             UserSpecParams userParams)
@@ -112,7 +152,10 @@ namespace API.Extensions
             
             if (!string.IsNullOrEmpty(userParams.Search))
             {
-                query = query.Where(x => x.UserName.Contains(userParams.Search) || x.BusinessInfo.BusinessName.Contains(userParams.Search));
+                query = query.Where(x =>
+                   x.BusinessInfo.BusinessName.Contains(userParams.Search)
+                || x.UserName.Contains(userParams.Search) 
+                || x.Email.Contains(userParams.Search));
             }
 
             if (userParams.LanguageIds?.Count != null && userParams.LanguageIds?.Count > 0)
@@ -130,41 +173,27 @@ namespace API.Extensions
                 query = query.Where(x => x.BusinessInfo.Locations.Any(l => userParams.MapBoxIds.Contains(l.Location.MapBoxId)));
             }
 
-            if (userParams.Latitude != null && userParams.Longitude != null)
-            {
-                //foreach (var q in query)
-                //{
-                //    q.BusinessInfo.Locations.OrderBy(x => CalculateDistance(x.Location.Longitude, x.Location.Latitude, 
-                //        userParams.Longitude.Value, userParams.Latitude.Value));
-                //}
-                //query = query.OrderBy(x => CalculateDistance(x.BusinessInfo.Locations.FirstOrDefault().Location.Longitude, 
-                //                                             x.BusinessInfo.Locations.FirstOrDefault().Location.Latitude,
-                //                                            userParams.Longitude.Value, userParams.Latitude.Value));
-            }
             //if (spec.Criteria != null)
             //{
             //    query = query.Where(spec.Criteria);
             //}
 
-            if (spec.OrderBy != null)
-            {
-                query = query.OrderBy(spec.OrderBy);
-            }
+            //if (spec.OrderBy != null)
+            //{
+            //    query = query.OrderBy(spec.OrderBy);
+            //}
 
-            if (spec.OrderByDescending != null)
-            {
-                query = query.OrderByDescending(spec.OrderByDescending);
-            }
+            //if (spec.OrderByDescending != null)
+            //{
+            //    query = query.OrderByDescending(spec.OrderByDescending);
+            //}
 
 
 
             //if (spec.IsPagingEnabled)
             //{
-            query = query.Skip(spec.Skip).Take(spec.Take);
+            //query = query.Skip(spec.Skip).Take(spec.Take);
             //}
-
-            //var distances = query.Select(x => new Point(x.BusinessInfo.Locations.First().Location.Longitude, x.BusinessInfo.Locations.First().Location.Lati
-                
 
             query = query.Include(x => x.Subscription)
                 .Include(x => x.BusinessInfo)
@@ -175,17 +204,6 @@ namespace API.Extensions
                 .Include(x => x.BusinessInfo)
                     .ThenInclude(x => x.SpokenLanguages);
             return await query.ToListAsync();
-        }
-
-        public static double CalculateDistance(double langitude, double latitude, double newLong, double newLat)
-        {
-            var d1 = latitude * (Math.PI / 180.0);
-            var num1 = langitude * (Math.PI / 180.0);
-            var d2 = newLat * (Math.PI / 180.0);
-            var num2 = newLong * (Math.PI / 180.0) - num1;
-            var d3 = Math.Pow(Math.Sin((d2 - d1) / 2.0), 2.0) +
-                     Math.Cos(d1) * Math.Cos(d2) * Math.Pow(Math.Sin(num2 / 2.0), 2.0);
-            return 6376500.0 * (2.0 * Math.Atan2(Math.Sqrt(d3), Math.Sqrt(1.0 - d3)));
         }
     }
 }

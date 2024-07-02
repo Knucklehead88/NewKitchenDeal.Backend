@@ -12,17 +12,19 @@ namespace Infrastructure.Services
     {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IBasketRepository _basketRepository;
-        private readonly IConfiguration _config;
+        private readonly MyAwsCredentials _credentials;
+
         public PaymentService(IUnitOfWork unitOfWork, IBasketRepository basketRepository,
-            IConfiguration config)
+            MyAwsCredentials credentials)
         {
-            _config = config;
             _basketRepository = basketRepository;
+            _credentials = credentials;
             _unitOfWork = unitOfWork;
         }
         public async Task<CustomerBasket> CreateOrUpdatePaymentIntent(string basketId)
         {
-            StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
+            // StripeConfiguration.ApiKey = _config["StripeSettings:SecretKey"];
+            StripeConfiguration.ApiKey = _credentials.SecretKey;
 
             var basket = await _basketRepository.GetBasketAsync(basketId);
 

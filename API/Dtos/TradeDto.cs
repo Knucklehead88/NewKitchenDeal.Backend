@@ -6,6 +6,5 @@ namespace API.Dtos
     {
         [Required]
         public int Id { get; set; }
-
     }
 }

@@ -35,6 +35,7 @@ namespace API.Controllers
         }
 
         [HttpPost]
+        [NonAction]
         public async Task<IActionResult> Index()
         {
             //var user = await _userManager.FindByEmailFromClaimsPrincipal(User);

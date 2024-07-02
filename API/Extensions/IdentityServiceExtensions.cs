@@ -21,9 +21,10 @@ namespace API.Extensions
         public static IServiceCollection AddIdentityServices(this IServiceCollection services, 
             IConfiguration config)
         {
+            var credentials = config.Get<MyAwsCredentials>();
             services.AddDbContext<AppIdentityDbContext>(opt =>
             {
-                opt.UseNpgsql(config.Get<MyAwsCredentials>().IdentityConnection);
+                opt.UseNpgsql(credentials.IdentityConnection);
 
                 //opt.UseNpgsql(config.GetConnectionString("IdentityConnection"));
                 //opt.UseNpgsql(Environment.GetEnvironmentVariable("IDENTITY_CONNECTION_STRING"));
@@ -62,25 +63,25 @@ namespace API.Extensions
                     options.TokenValidationParameters = new TokenValidationParameters
                     {
                         ValidateIssuerSigningKey = true,
-                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Token:Key"])),
-                        ValidIssuer = config["Token:Issuer"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(credentials.TokenKey)),
+                        ValidIssuer = credentials.TokenIssuer,
                         ValidateIssuer = true,
                         ValidateAudience = false
                     };
                 })
                 .AddGoogle(GoogleDefaults.AuthenticationScheme, googleOptions =>
                 {
-                    var googleAuth = config.GetSection("Authentication:Google");
-                    googleOptions.ClientId = googleAuth["ClientId"];
-                    googleOptions.ClientSecret = googleAuth["ClientSecret"];
+                    // var googleAuth = config.GetSection("Authentication:Google");
+                    googleOptions.ClientId = credentials.GoogleClientId;
+                    googleOptions.ClientSecret = credentials.GoogleClientSecret;
                     googleOptions.SignInScheme = IdentityConstants.ExternalScheme;
                     googleOptions.SaveTokens = true;
                 })
                 .AddFacebook(FacebookDefaults.AuthenticationScheme, facebookOptions =>
                 {
-                    var facebookAuth = config.GetSection("Authentication:Facebook");
-                    facebookOptions.ClientId = facebookAuth["ClientId"];
-                    facebookOptions.ClientSecret = facebookAuth["ClientSecret"];
+                    // var facebookAuth = config.GetSection("Authentication:Facebook");
+                    facebookOptions.ClientId = credentials.FacebookClientId;
+                    facebookOptions.ClientSecret = credentials.FacebookClientSecret;
                 });
 
 

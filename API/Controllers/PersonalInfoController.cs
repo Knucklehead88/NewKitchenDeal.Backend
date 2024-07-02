@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.IO;
 using System.Net;
+using System.Threading;
 
 namespace API.Controllers
 {
@@ -22,17 +23,16 @@ namespace API.Controllers
         private readonly IMapper _mapper;
 
         public PersonalInfoController(UserManager<AppUser> userManager,
-            IMapper mapper,
-            ICrudService<Location> locationService)
+            IMapper mapper)
         {
             _mapper = mapper;
             _userManager = userManager;
         }
 
         [HttpPost]
-        public async Task<ActionResult<ResponsePersonalInfoDto>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto)
+        public async Task<ActionResult<ResponsePersonalInfoDto>> AddUserPerfonalInfo(PersonalInfoDto personalInfoDto, CancellationToken cancellationToken)
         {
-            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User, cancellationToken);
             
             if (user == null)
             {
@@ -51,6 +51,7 @@ namespace API.Controllers
                 user.PersonalInfo.Locations = personalInfoLocations;
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             var result = await _userManager.UpdateAsync(user);
 
             if (result.Succeeded)
@@ -66,9 +67,9 @@ namespace API.Controllers
 
 
         [HttpGet]
-        public async Task<ActionResult<ResponsePersonalInfoDto>> GetUserPerfonalInfo()
+        public async Task<ActionResult<ResponsePersonalInfoDto>> GetUserPerfonalInfo(CancellationToken cancellationToken)
         {
-            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User);
+            var user = await _userManager.FindUserByClaimsPrincipleWithPersonalInfo(User, cancellationToken);
 
             if (user?.PersonalInfo == null)
             {

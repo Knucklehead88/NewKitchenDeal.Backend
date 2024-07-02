@@ -1,4 +1,5 @@
 using Amazon.S3;
+using Amazon.SimpleEmail;
 using API.Errors;
 using Core.Entities;
 using Core.Interfaces;
@@ -20,13 +21,12 @@ namespace API.Extensions
             IConfiguration config)
         {
             // services.AddSingleton<IResponseCacheService, ResponseCacheService>();
-            services.AddDbContext<StoreContext>(opt =>
-            {
-                opt.UseNpgsql(config.Get<MyAwsCredentials>().DefaultConnection);
-                //opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
-                //opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
-
-            });
+            //services.AddDbContext<StoreContext>(opt =>
+            //{
+            //    opt.UseNpgsql(config.Get<MyAwsCredentials>().DefaultConnection);
+            //    opt.UseNpgsql(config.GetConnectionString("DefaultConnection"));
+            //    opt.UseNpgsql(Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"));
+            //});
             //services.AddSingleton<IConnectionMultiplexer>(c => 
             //{
                 //var options = ConfigurationOptions.Parse(config.GetConnectionString("Redis")); //localhost
@@ -34,7 +34,7 @@ namespace API.Extensions
                 //return ConnectionMultiplexer.Connect(options);
             //});
             //services.AddScoped<IBasketRepository, BasketRepository>();
-            services.AddScoped<IProductRepository, ProductRepository>();
+            //services.AddScoped<IProductRepository, ProductRepository>();
             //services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IProductsService, ProductsService>();
             services.AddScoped<IPricesService, PricesService>();
@@ -43,15 +43,17 @@ namespace API.Extensions
             services.AddScoped<ICustomersService, CustomersService>();
             services.AddScoped<IPaymentMethodsService, PaymentMethodsService>();
             services.AddScoped<ITokenService, TokenService>();
-            services.AddScoped<IEmailService, EmailService>();
             //services.AddScoped<IOrderService, OrderService>();
-            services.AddScoped<IUnitOfWork, UnitOfWork>();
-            services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
+            //services.AddScoped<IUnitOfWork, UnitOfWork>();
+            //services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
             services.AddScoped(typeof(ICrudService<>), typeof(CrudService<>));
             services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
             //services.AddDefaultAWSOptions(config.GetAWSOptions());
             services.AddAWSService<IAmazonS3>();
+            services.AddAWSService<IAmazonSimpleEmailService>();
             services.AddSingleton<IMediaUploadService, MediaUploadService>();
+            services.AddScoped<IEmailService, EmailService>();
+            services.AddScoped<IAwsEmailService, AwsEmailService>();
 
             services.Configure<ApiBehaviorOptions>(options =>
             {

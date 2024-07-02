@@ -18,7 +18,7 @@ using System.Collections.Generic;
 
 namespace API.Controllers
 {
-    //[Authorize]
+    [Authorize]
     public class StripeController(IProductsService productsService,
         IPaymentMethodsService paymentMethodsService,
         ICustomersService customersService,
@@ -472,7 +472,7 @@ namespace API.Controllers
         {
             try
             {
-                var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User);
+                var user = await _userManager.FindUserByClaimsPrincipleWithBusinessInfo(User, default);
                 if (user == null)
                 {
                     return NotFound(new ApiResponse(404));
@@ -488,15 +488,15 @@ namespace API.Controllers
 
                 user.Subscription = new()
                 {
-                     Id = subscription.Id,
-                     StartDate = subscription.Created,
-                     EndDate = subscription.CurrentPeriodEnd,
+                    Id = subscription.Id,
+                    StartDate = subscription.Created,
+                    EndDate = subscription.CurrentPeriodEnd,
                     Status = subscription.Status,
                     CancelAtPeriodEnd = subscription.CancelAtPeriodEnd,
                     SubscriptionItemId = subscription.Items.Data[0].Id,
                     Description  = price.Product.Description,
-                     PlanType = price.Product.Name,
-                     Price = price.UnitAmountDecimal
+                    PlanType = price.Product.Name,
+                    Price = price.UnitAmountDecimal
                 };
 
                 var result = await _userManager.UpdateAsync(user);
@@ -619,14 +619,19 @@ namespace API.Controllers
                 {
                     return NotFound(new ApiResponse(404));
                 }
+                var subscription = await _subscriptionService.CancelSubscriptionsAsync(id);
 
                 if (user.Subscription != null)
                 {
-                    user.Subscription = null;
+                    user.Subscription.Id = subscription.Id;
+                    user.Subscription.StartDate = subscription.StartDate;
+                    user.Subscription.EndDate = subscription.CurrentPeriodEnd;
+                    user.Subscription.Status = subscription.Status;
+                    user.Subscription.CancelAtPeriodEnd = subscription.CancelAtPeriodEnd;
+                    user.Subscription.SubscriptionItemId = subscription.Items.Data[0].Id;
                     await _userManager.UpdateAsync(user);
                 }
 
-                var subscription = await _subscriptionService.CancelSubscriptionsAsync(id);
                 return _mapper.Map<SubscriptionDto>(subscription);
             }
             catch (Exception ex)
@@ -660,8 +665,8 @@ namespace API.Controllers
                     user.Subscription.Price = price.UnitAmountDecimal;
                     user.Subscription.Description = price.Product.Description;
                     user.Subscription.PlanType = price.Product.Name;
+                    await _userManager.UpdateAsync(user);
                 }
-                await _userManager.UpdateAsync(user);
 
                 return _mapper.Map<SubscriptionDto>(subscription);
             }
